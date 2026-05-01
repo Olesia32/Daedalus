@@ -27,11 +27,12 @@ DdPropertyPanelPresenter >> defaultLayout [
 
 { #category : 'initialization' }
 DdPropertyPanelPresenter >> initializePresenters [
-    super initializePresenters.
 
-    labelInput := TextInputPresenter new
-        placeholder: 'Button label';
-        yourself.
+	super initializePresenters.
+
+	labelInput := TextInputPresenter new
+		              placeholder: '';
+		              yourself
 ]
 
 { #category : 'accessing' }
