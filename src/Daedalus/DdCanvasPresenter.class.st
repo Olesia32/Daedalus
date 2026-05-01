@@ -23,26 +23,40 @@ DdCanvasPresenter class >> onPresenter: aPresenter [
 ]
 
 { #category : 'as yet unclassified' }
-DdCanvasPresenter >> clickedMorphFromEvent: anEvent [ 
-	(anEvent respondsTo: #target) ifTrue: [ ^ anEvent target ].
-	(anEvent respondsTo: #receiver) ifTrue: [ ^ anEvent receiver ].
-	(anEvent respondsTo: #morph) ifTrue: [ ^ anEvent morph ].
-	^ nil
+DdCanvasPresenter >> clickedMorphFromEvent: anEvent [
+    (anEvent respondsTo: #target) ifTrue: [ 
+        anEvent target ifNotNil: [ ^ anEvent target ] ].
+
+    (anEvent respondsTo: #source) ifTrue: [ 
+        anEvent source ifNotNil: [ ^ anEvent source ] ].
+
+    (anEvent respondsTo: #receiver) ifTrue: [ 
+        anEvent receiver ifNotNil: [ ^ anEvent receiver ] ].
+
+    ^ nil
 ]
 
 { #category : 'as yet unclassified' }
-DdCanvasPresenter >> ddOnMouseDown: anEvent [ 
-	| clickedMorph p |
+DdCanvasPresenter >> ddOnMouseDown: anEvent [
+
+	| clickedMorph presenter |
+	Transcript show: 'CLICK'; cr.
 	clickedMorph := self clickedMorphFromEvent: anEvent.
 	clickedMorph ifNil: [ ^ self ].
 
-	p := self presenterFromClickedMorph: clickedMorph.
-	p ifNil: [ ^ self ].
+	presenter := presenterIndex presenterAtClickedMorph: clickedMorph.
+	presenter ifNil: [ ^ self ].
 
-	selectedPresenter := p.
-	self logSelectionFor: p clickedMorph: clickedMorph.
+	selectedPresenter := presenter.
+	self logSelectionFor: presenter clickedMorph: clickedMorph.
 
-	(anEvent respondsTo: #wasHandled:) ifTrue: [ anEvent wasHandled: true ].
+	(anEvent respondsTo: #wasHandled:) ifTrue: [
+		anEvent wasHandled: true ]
+]
+
+{ #category : 'as yet unclassified' }
+DdCanvasPresenter >> ddOnMouseUp: anEvent [
+    self ddOnMouseDown: anEvent
 ]
 
 { #category : 'layout' }
@@ -86,15 +100,21 @@ DdCanvasPresenter >> instVarNameForPresenterInRoot: aPresenter [
 ]
 
 { #category : 'as yet unclassified' }
-DdCanvasPresenter >> installClickHookOnWidget: aWidget [ 
-	(aWidget respondsTo: #on:send:to:) ifTrue: [
-		aWidget on: #mouseDown send: #ddOnMouseDown: to: self ].
+DdCanvasPresenter >> installClickHookOnWidget: aWidget [
+    aWidget on: #mouseDown send: #ddOnMouseDown: to: self.
+    aWidget submorphs do: [ :sub |
+        self installClickHookOnWidget: sub ]
 ]
 
 { #category : 'as yet unclassified' }
-DdCanvasPresenter >> installClickHooks [ 
-	presenterIndex widgetToPresenter keysDo: [ :w |
-		self installClickHookOnWidget: w ].
+DdCanvasPresenter >> installClickHooks [
+    | root |
+    root := rootPreviewPresenter adapter widget.
+
+    root allMorphsDo: [ :m |
+        (m respondsTo: #on:send:to:) ifTrue: [
+            m on: #mouseDown send: #ddOnMouseDown: to: self ].
+    ].
 ]
 
 { #category : 'as yet unclassified' }
@@ -119,16 +139,27 @@ DdCanvasPresenter >> presenterFromClickedMorph: aMorph [
 	^ nil
 ]
 
+{ #category : 'accessing' }
+DdCanvasPresenter >> presenterIndex [
+ ^ presenterIndex 
+]
+
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> rebuildPreview [
+    rootPreviewPresenter := editedPresenter class new.
+    previewPresenter removeAll; add: rootPreviewPresenter.
+    presenterIndex := DdPresenterIndex new buildFromRootPresenter: rootPreviewPresenter.
+    [ self installClickHooks ] fork
+]
 
-	rootPreviewPresenter := editedPresenter class new.
-	previewPresenter
-		removeAll;
-		add: rootPreviewPresenter .
-	presenterIndex := DdPresenterIndex new buildFromRootPresenter:
-		                  rootPreviewPresenter.
-	self installClickHooks
+{ #category : 'accessing' }
+DdCanvasPresenter >> rootPreviewPresenter [
+  ^ rootPreviewPresenter 
+]
+
+{ #category : 'accessing' }
+DdCanvasPresenter >> selectedPresenter [
+    ^ selectedPresenter
 ]
 
 { #category : 'as yet unclassified' }

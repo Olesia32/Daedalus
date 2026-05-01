@@ -58,8 +58,8 @@ DdPresenterIndex >> presenters [
 { #category : 'as yet unclassified' }
 DdPresenterIndex >> widgetOf: aPresenter [
 
-  aPresenter build.
-  ^ aPresenter adapter widget 
+  aPresenter adapter ifNil: [ aPresenter build ].
+  ^ aPresenter adapter widget
 ]
 
 { #category : 'accessing' }

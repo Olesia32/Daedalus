@@ -27,3 +27,15 @@ DdEmbeddedDemoPresenter >> initializePresenters [
 
 	inner := DdInnerDemoPresenter new.
 ]
+
+{ #category : 'accessing' }
+DdEmbeddedDemoPresenter >> inner [
+
+	^ inner
+]
+
+{ #category : 'accessing' }
+DdEmbeddedDemoPresenter >> titleLabel [
+
+	^ titleLabel
+]

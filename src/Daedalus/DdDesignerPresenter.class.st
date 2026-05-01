@@ -53,11 +53,20 @@ DdDesignerPresenter >> initializePresenters [
 { #category : 'as yet unclassified' }
 DdDesignerPresenter >> presenterClass: aClass [
 
+	| targetPresenter |
 	presenter := aClass.
 	workArea := DdCanvasPresenter onPresenter: presenter new.
 	codeEditor classToEdit: presenter.
+	targetPresenter := (DdPresenterIndex new buildFromRootPresenter: workArea)
+    widgetToPresenter values
+    detect: [ :p | p class = DdInnerDemoPresenter ].
 
-	propertyPanel target:
-		(DdPresenterIndex new buildFromRootPresenter: workArea)
-			widgetToPresenter values last
+propertyPanel
+    target: targetPresenter
+    onClass: DdInnerDemoPresenter
+    canvas: workArea.
+	propertyPanel
+		target: targetPresenter
+		onClass: targetPresenter class
+		canvas: workArea
 ]
