@@ -40,33 +40,51 @@ DdDesignerPresenter >> defaultLayout [
 { #category : 'initialization' }
 DdDesignerPresenter >> initializePresenters [
 
-	| tmp1 |
-	widgetPalette := DdWidgetPalettePresenter new.
-	codeEditor := DdLayoutCodeEditorPresenter new.
-	propertyPanel := DdPropertyPanelPresenter new.
-	tmp1 := self focusOrder.
-	tmp1
-		add: widgetPalette;
-		add: workArea
+    widgetPalette := DdWidgetPalettePresenter new.
+    codeEditor := DdLayoutCodeEditorPresenter new.
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'initialization' }
+DdDesignerPresenter >> onSelectionChanged [
+
+    | selected |
+    Transcript show: 'UI UPDATE'; cr.
+
+    selected := workArea selectedPresenter.
+    selected ifNil: [ ^ self ].
+
+    propertyPanel := DdPropertyPanelPresenter new.
+
+    propertyPanel
+        target: selected
+        onClass: selected class
+        canvas: workArea.
+
+    self rebuildLayout
+]
+
+{ #category : 'initialization' }
 DdDesignerPresenter >> presenterClass: aClass [
 
-	| targetPresenter |
-	presenter := aClass.
-	workArea := DdCanvasPresenter onPresenter: presenter new.
-	codeEditor classToEdit: presenter.
-	targetPresenter := (DdPresenterIndex new buildFromRootPresenter: workArea)
-    widgetToPresenter values
-    detect: [ :p | p class = DdInnerDemoPresenter ].
+    presenter := aClass.
+    workArea := DdCanvasPresenter onPresenter: presenter new.
 
-propertyPanel
-    target: targetPresenter
-    onClass: DdInnerDemoPresenter
-    canvas: workArea.
-	propertyPanel
-		target: targetPresenter
-		onClass: targetPresenter class
-		canvas: workArea
+    workArea designer: self.
+
+    codeEditor classToEdit: presenter.
+
+    propertyPanel := DdPropertyPanelPresenter new.
+
+    propertyPanel
+        target: nil
+        onClass: nil
+        canvas: workArea.
+]
+
+{ #category : 'initialization' }
+DdDesignerPresenter >> rebuildLayout [
+
+    self layout: self defaultLayout.
+    self needRebuild: true.
+    self updatePresenter
 ]
