@@ -21,5 +21,5 @@ DdInnerDemoPresenter >> initializePresenters [
 
 	super initializePresenters.
 	label := self newLabel.
-	label label: 'Inne'
+	label label: 'Inn'
 ]

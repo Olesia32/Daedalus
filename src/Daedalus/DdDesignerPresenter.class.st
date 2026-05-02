@@ -47,44 +47,64 @@ DdDesignerPresenter >> initializePresenters [
 { #category : 'initialization' }
 DdDesignerPresenter >> onSelectionChanged [
 
-    | selected |
-    Transcript show: 'UI UPDATE'; cr.
+	| selected selectedSub |
 
-    selected := workArea selectedPresenter.
-    selected ifNil: [ ^ self ].
+	selected := workArea selectedPresenter.
+	selectedSub := workArea selectedSubPresenter.
 
-    propertyPanel := DdPropertyPanelPresenter new.
+	selected ifNil: [ ^ self ].
 
-    propertyPanel
-        target: selected
-        onClass: selected class
-        canvas: workArea.
+	propertyPanel := DdPropertyPanelPresenter new.
 
-    self rebuildLayout
+	propertyPanel
+		target: selected
+		subPresenter: selectedSub
+		onClass: selected class
+		canvas: workArea.
+
+	self rebuildLayout
 ]
 
 { #category : 'initialization' }
 DdDesignerPresenter >> presenterClass: aClass [
 
-    presenter := aClass.
-    workArea := DdCanvasPresenter onPresenter: presenter new.
+	presenter := aClass.
 
-    workArea designer: self.
+	workArea := DdCanvasPresenter onPresenter: presenter new.
+	workArea designer: self.
+	codeEditor classToEdit: presenter.
 
-    codeEditor classToEdit: presenter.
-
-    propertyPanel := DdPropertyPanelPresenter new.
-
-    propertyPanel
-        target: nil
-        onClass: nil
-        canvas: workArea.
+	propertyPanel := DdPropertyPanelPresenter new.
+	propertyPanel
+		target: nil
+		subPresenter: nil
+		onClass: nil
+		canvas: workArea.
+		
+	WorldMorph doOneCycle.
+	workArea installClickHooks
 ]
 
 { #category : 'initialization' }
-DdDesignerPresenter >> rebuildLayout [
+DdDesignerPresenter >> rebuildLayout [ 
 
-    self layout: self defaultLayout.
+    | newLayout |
+
+    newLayout := SpBoxLayout newTopToBottom
+        spacing: 10;
+        add: (SpBoxLayout newLeftToRight
+            spacing: 20;
+            add: widgetPalette;
+            add: workArea;
+            add: propertyPanel;
+            yourself);
+        add: codeEditor;
+        yourself.
+
+    self layout: newLayout.
     self needRebuild: true.
-    self updatePresenter
+    self updatePresenter.
+
+    WorldMorph doOneCycle.
+    workArea installClickHooks.
 ]

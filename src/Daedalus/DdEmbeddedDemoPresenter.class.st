@@ -20,12 +20,13 @@ DdEmbeddedDemoPresenter >> defaultLayout [
 ]
 
 { #category : 'initialization' }
-DdEmbeddedDemoPresenter >> initializePresenters [ 
+DdEmbeddedDemoPresenter >> initializePresenters [
+
 	super initializePresenters.
 	titleLabel := self newLabel.
-	titleLabel label: 'Embedded'.
+	titleLabel label: 'Embedder'.
 
-	inner := DdInnerDemoPresenter new.
+	inner := DdInnerDemoPresenter new
 ]
 
 { #category : 'accessing' }

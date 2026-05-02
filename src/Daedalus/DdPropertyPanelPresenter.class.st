@@ -6,7 +6,8 @@ Class {
 		'labelInput',
 		'editedClass',
 		'canvas',
-		'applyButton'
+		'applyButton',
+		'subPresenter'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -16,38 +17,47 @@ Class {
 { #category : 'as yet unclassified' }
 DdPropertyPanelPresenter >> applyLabelChange: aString [
 
-	| props builder source |
+	| props builder source varName |
+	varName := self varNameForSubPresenter.
+	varName ifNil: [ ^ self ].
+
 	props := DdLabelProperties new
-		         varName: 'label';
+		         varName: varName;
 		         label: aString;
 		         yourself.
+
 	builder := DdInitializeCodeBuilder new
 		           presenterClass: editedClass
 		           properties: { props }.
+
 	source := builder generate.
 	(editedClass compile: source) ifNotNil: [
-			canvas rebuildPreview ]
+			canvas rebuildPreview. ]
 ]
 
 { #category : 'layout' }
-DdPropertyPanelPresenter >> defaultLayout [ 
-    ^ SpBoxLayout newTopToBottom
-        spacing: 10;
-        add: 'Properties' expand: false;
-        add: labelInput expand: false;
-        add: applyButton expand: false;
-        yourself
+DdPropertyPanelPresenter >> defaultLayout [
+
+	| tmp2 |
+	tmp2 := SpBoxLayout newTopToBottom.
+	tmp2
+		spacing: 10;
+		add: 'Properties' expand: false;
+		add: labelInput expand: false;
+		add: applyButton expand: false.
+	^ tmp2 yourself
 ]
 
 { #category : 'initialization' }
-DdPropertyPanelPresenter >> initializePresenters [ 
-    super initializePresenters.
-    labelInput := self newTextInput.
-    labelInput placeholder: ''.
-    applyButton := self newButton.
-    applyButton 
-        label: 'Apply';
-        action: [ self applyLabelChange: labelInput text]
+DdPropertyPanelPresenter >> initializePresenters [
+
+	super initializePresenters.
+	labelInput := self newTextInput.
+	labelInput placeholder: ''.
+	applyButton := self newButton.
+	applyButton
+		label: 'Apply';
+		action: [ self applyLabelChange: labelInput text ]
 ]
 
 { #category : 'accessing' }
@@ -58,14 +68,54 @@ DdPropertyPanelPresenter >> loadProperties [
     labelInput text: labelPresenter label.
 ]
 
-{ #category : 'initialization' }
-DdPropertyPanelPresenter >> target: aPresenter onClass: aClass canvas: aCanvas [
-	"aPresenter — живий об'єкт preview,
-     aClass     — клас який редагуємо (DdInnerDemoPresenter),
-     aCanvas    — щоб викликати rebuildPreview після компіляції"
+{ #category : 'as yet unclassified' }
+DdPropertyPanelPresenter >> loadPropertiesFor: arg1 [
 
-	targetPresenter := aPresenter.
-	editedClass := aClass.
-	canvas := aCanvas.
+	arg1
+		ifNil: [
+				labelInput text: ''.
+				^ self ]
+		ifNotNil: [ arg1 ].
+	(arg1 isKindOf: SpLabelPresenter) ifTrue: [
+			labelInput text: arg1 label.
+			^ self ].
+	nil.
+	labelInput text: ''
+]
+
+{ #category : 'initialization' }
+DdPropertyPanelPresenter >> target: arg1 onClass: arg2 canvas: arg3 [
+
+	targetPresenter := arg1.
+	editedClass := arg2.
+	canvas := arg3.
 	self loadProperties
+]
+
+{ #category : 'as yet unclassified' }
+DdPropertyPanelPresenter >> target: aPresenter subPresenter: aSubPresenter onClass: aClass canvas: aCanvas [ 
+
+    targetPresenter := aPresenter.
+    subPresenter := aSubPresenter.
+    editedClass := aClass.
+    canvas := aCanvas.
+
+    self loadPropertiesFor: aSubPresenter
+
+]
+
+{ #category : 'as yet unclassified' }
+DdPropertyPanelPresenter >> varNameForSubPresenter [ 
+
+    | names |
+
+    targetPresenter ifNil: [ ^ 'label' ].
+
+    names := targetPresenter class allInstVarNames.
+
+    1 to: targetPresenter class instSize do: [ :i |
+        (targetPresenter instVarAt: i) == subPresenter ifTrue: [
+            ^ names at: i ] ].
+
+    ^ nil
 ]

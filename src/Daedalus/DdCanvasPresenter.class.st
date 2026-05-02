@@ -8,7 +8,8 @@ Class {
 		'presenterIndex',
 		'selectedPresenter',
 		'selectionOverlay',
-		'designer'
+		'designer',
+		'selectedSubPresenter'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -32,53 +33,55 @@ DdCanvasPresenter >> announceSelectionChanged [
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> clickedMorphFromEvent: arg1 [
 
-	(arg1 respondsTo: #target) ifTrue: [
-			| tmp2 |
-			tmp2 := arg1 target.
-			tmp2 ifNotNil: [ ^ arg1 target ] ].
-	(arg1 respondsTo: #source) ifTrue: [
-			| tmp4 |
-			tmp4 := arg1 source.
-			tmp4 ifNotNil: [ ^ arg1 source ] ].
-	(arg1 respondsTo: #receiver) ifTrue: [
-			| tmp6 |
-			tmp6 := arg1 receiver.
-			tmp6 ifNotNil: [ ^ arg1 receiver ] ].
-	^ nil
+	| tmp1 |
+	tmp1 := arg1 position.
+	^ self deepestMorphAt: tmp1
 ]
 
-{ #category : 'accessing' }
+{ #category : 'as yet unclassified' }
 DdCanvasPresenter >> ddOnMouseDown: anEvent [
 
-    | clickedMorph presenter |
-    Transcript show: 'CLICK'; cr.
+	| clickedMorph result |
 
-    clickedMorph := self clickedMorphFromEvent: anEvent.
-    clickedMorph ifNil: [ ^ self ].
+	clickedMorph := self clickedMorphFromEvent: anEvent.
+	clickedMorph ifNil: [ ^ self ].
 
-    presenter := self presenterFromClickedMorph: clickedMorph.
+	result := self presenterFromClickedMorph: clickedMorph.
+	result ifNil: [ ^ self ].
 
-    presenter ifNil: [
-        Transcript show: 'NO PRESENTER'; cr.
-        ^ self
-    ].
+	selectedPresenter := result key.
+	selectedSubPresenter := result value.
 
-    Transcript show: 'FOUND: ', presenter class name; cr.
+	designer ifNotNil: [ designer onSelectionChanged ].
 
-    selectedPresenter := presenter.
-
-    designer ifNotNil: [
-        designer onSelectionChanged
-    ].
-
-    (anEvent respondsTo: #wasHandled:) ifTrue: [
-        anEvent wasHandled: true ]
+	(anEvent respondsTo: #wasHandled:) ifTrue: [
+		anEvent wasHandled: true ]
 ]
 
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> ddOnMouseUp: arg1 [
 
 	self ddOnMouseDown: arg1
+]
+
+{ #category : 'as yet unclassified' }
+DdCanvasPresenter >> deepestMorphAt: arg1 [
+
+	| tmp1 |
+	tmp1 := rootPreviewPresenter adapter widget.
+	tmp1 ifNil: [ ^ nil ] ifNotNil: [ tmp1 ].
+	^ self deepestMorphIn: tmp1 at: arg1
+]
+
+{ #category : 'as yet unclassified' }
+DdCanvasPresenter >> deepestMorphIn: arg1 at: arg2 [
+
+	(arg1 fullBounds containsPoint: arg2) ifFalse: [ ^ nil ].
+	arg1 submorphs reverseDo: [ :arg3 |
+			| tmp1 |
+			tmp1 := self deepestMorphIn: arg3 at: arg2.
+			tmp1 ifNotNil: [ ^ tmp1 ] ].
+	^ arg1
 ]
 
 { #category : 'layout' }
@@ -99,8 +102,9 @@ DdCanvasPresenter >> defaultLayoutSourceOf: aClass [
 ]
 
 { #category : 'accessing' }
-DdCanvasPresenter >> designer: aDesigner [
-    designer := aDesigner
+DdCanvasPresenter >> designer: arg1 [
+
+	designer := arg1
 ]
 
 { #category : 'accessing' }
@@ -141,26 +145,21 @@ DdCanvasPresenter >> installClickHookOnWidget: arg1 [
 	arg1 submorphs do: [ :arg2 | self installClickHookOnWidget: arg2 ]
 ]
 
-{ #category : 'initialization' }
+{ #category : 'accessing' }
 DdCanvasPresenter >> installClickHooks [
 
 	| tmp1 tmp3 |
 	tmp1 := rootPreviewPresenter adapter widget.
 	tmp3 := 0.
-	tmp1
-		ifNil: [
-				Transcript
-					show: 'NO ROOT WIDGET';
-					cr.
-				^ self ]
-		ifNotNil: [ tmp1 ].
+
+	tmp1 allMorphsDo: [ :m |
+			(m respondsTo: #removeActionsForEvent:) ifTrue: [
+				m removeActionsForEvent: #mouseDown ] ].
+
 	tmp1 allMorphsDo: [ :arg1 |
 			(arg1 respondsTo: #on:send:to:) ifTrue: [
 					arg1 on: #mouseDown send: #ddOnMouseDown: to: self.
 					tmp3 := tmp3 + 1 ] ].
-	Transcript
-		show: 'Hooks installed: ' , tmp3 printString;
-		cr
 ]
 
 { #category : 'as yet unclassified' }
@@ -175,24 +174,31 @@ DdCanvasPresenter >> logSelectionFor: aPresenter clickedMorph: aMorph [
 		cr.
 ]
 
-{ #category : 'accessing' }
+{ #category : 'as yet unclassified' }
 DdCanvasPresenter >> presenterFromClickedMorph: aMorph [
 
-    | m |
-    m := aMorph.
+	| m adapter spPresenter current |
+	m := aMorph.
 
-    [ m notNil ] whileTrue: [
+	[ m notNil ] whileTrue: [
+			(m respondsTo: #model) ifTrue: [
+					adapter := m model.
 
-        (m respondsTo: #valueOfProperty:) ifTrue: [
-            (m valueOfProperty: #ddPresenter ifAbsent: [ nil ]) ifNotNil: [ :p |
-                ^ p
-            ]
-        ].
+					(adapter respondsTo: #owner) ifTrue: [
+							spPresenter := adapter owner.
+							spPresenter ifNotNil: [
+									current := spPresenter owner.
 
-        m := m owner
-    ].
+									[ current isKindOf: SpPresenter ] whileTrue: [
+											(presenterIndex presenters includes: current) ifTrue: [
+													(current class name beginsWith: 'Sp') ifFalse: [
+														^ Association key: current value: spPresenter ] ].
+											current ifNil: [ ^ nil ].
+											current := current owner ] ] ] ].
 
-    ^ nil
+			m := m owner ].
+
+	^ nil
 ]
 
 { #category : 'accessing' }
@@ -201,16 +207,26 @@ DdCanvasPresenter >> presenterIndex [
 	^ presenterIndex
 ]
 
-{ #category : 'initialization' }
+{ #category : 'as yet unclassified' }
 DdCanvasPresenter >> rebuildPreview [
 
-	rootPreviewPresenter := editedPresenter class new.
-	previewPresenter
-		removeAll;
-		add: rootPreviewPresenter.
-	rootPreviewPresenter build.
+	| newPresenter |
+	newPresenter := editedPresenter class new.
+	newPresenter build.
+
+	rootPreviewPresenter := newPresenter.
+
 	presenterIndex := DdPresenterIndex new buildFromRootPresenter:
-		                  rootPreviewPresenter
+		                  rootPreviewPresenter.
+	self layout: (SpBoxLayout newTopToBottom
+			 spacing: 30;
+			 add: rootPreviewPresenter expand: false;
+			 yourself).
+
+	self needRebuild: true.
+	self updatePresenter.
+
+	UIManager default defer: [ self installClickHooks ]
 ]
 
 { #category : 'accessing' }
@@ -223,6 +239,12 @@ DdCanvasPresenter >> rootPreviewPresenter [
 DdCanvasPresenter >> selectedPresenter [
 
 	^ selectedPresenter
+]
+
+{ #category : 'accessing' }
+DdCanvasPresenter >> selectedSubPresenter [ 
+
+    ^ selectedSubPresenter
 ]
 
 { #category : 'as yet unclassified' }
