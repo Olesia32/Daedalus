@@ -20,6 +20,6 @@ DdInnerDemoPresenter >> defaultLayout [
 DdInnerDemoPresenter >> initializePresenters [
 
 	super initializePresenters.
-	label := self newLabel.
-	label label: 'Inn'
+	label := LabelPresenter new.
+	label label: 'Inne'
 ]

@@ -41,13 +41,13 @@ DdInitializeCodeBuilder >> generateFresh [
 { #category : 'translating' }
 DdInitializeCodeBuilder >> patchSource: source [ 
     | ast props targetVarName newValue assignNode |
+
     props := propertiesList first.
     targetVarName := props varName.
     newValue := props label.
 
     ast := RBParser parseMethod: source.
 
-    "шукаємо рядок  label label: '...'"
     assignNode := ast body statements 
         detect: [ :stmt |
             stmt isMessage
@@ -58,18 +58,21 @@ DdInitializeCodeBuilder >> patchSource: source [
 
     assignNode 
         ifNotNil: [
-            "міняємо тільки аргумент"
             assignNode arguments first replaceWith: 
                 (RBLiteralValueNode value: newValue) ]
         ifNil: [
-    | initNode newNode |
-    initNode := ast body statements
-        detect: [ :stmt |
-            stmt isAssignment
-                and: [ stmt variable name = targetVarName ] ].
-    newNode := RBParser parseExpression: 
-        targetVarName , ' label: ' , newValue printString.
-    ast body addNode: newNode after: initNode ].
+            | initNode newNode |
+            initNode := ast body statements
+                detect: [ :stmt |
+                    stmt isAssignment
+                        and: [ stmt variable name = targetVarName ] ]
+                ifNone: [ nil ].
+
+            initNode ifNil: [ ^ ast formattedCode ].
+
+            newNode := RBParser parseExpression: 
+                targetVarName , ' label: ' , newValue printString.
+            ast body addNode: newNode after: initNode ].
 
     ^ ast formattedCode
 ]
@@ -78,27 +81,4 @@ DdInitializeCodeBuilder >> patchSource: source [
 DdInitializeCodeBuilder >> presenterClass: aClass properties: aCollection [ 
     presenterClass := aClass.
     propertiesList := aCollection.
-]
-
-{ #category : 'writing' }
-DdInitializeCodeBuilder >> writeConfigLinesFor: props on: stream [
-
-	(props isKindOf: DdLabelProperties) ifFalse: [ ^ self ].
-	stream tab.
-	stream nextPutAll: props varName.
-	stream nextPutAll: ' label: '.
-	stream print: props label.
-	stream
-		nextPutAll: '.';
-		cr
-]
-
-{ #category : 'writing' }
-DdInitializeCodeBuilder >> writeInitLineFor: props on: stream [ 
-    "titleLabel := self newLabel."
-    stream tab.
-    stream nextPutAll: props varName.
-    stream nextPutAll: ' := self '.
-    stream nextPutAll: (self factoryMethodFor: props).
-    stream nextPutAll: '.'; cr.
 ]

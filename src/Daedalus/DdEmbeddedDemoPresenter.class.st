@@ -23,9 +23,8 @@ DdEmbeddedDemoPresenter >> defaultLayout [
 DdEmbeddedDemoPresenter >> initializePresenters [
 
 	super initializePresenters.
-	titleLabel := self newLabel.
-	titleLabel label: 'Embedder'.
-
+	titleLabel := LabelPresenter new.
+	titleLabel label: 'Embedde'.
 	inner := DdInnerDemoPresenter new
 ]
 

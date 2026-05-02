@@ -45,24 +45,24 @@ DdDesignerPresenter >> initializePresenters [
 ]
 
 { #category : 'initialization' }
-DdDesignerPresenter >> onSelectionChanged [
+DdDesignerPresenter >> onSelectionChanged [ 
+    | selected selectedSub |
+    selected := workArea selectedPresenter.
+    selectedSub := workArea selectedSubPresenter.
+    selected ifNil: [ ^ self ].
 
-	| selected selectedSub |
+    "Якщо selected є BasePresenter — піднімаємось до власника"
+    (selected respondsTo: #mainPresenter) ifTrue: [
+        selectedSub := selected.
+        selected := selected owner ].
 
-	selected := workArea selectedPresenter.
-	selectedSub := workArea selectedSubPresenter.
-
-	selected ifNil: [ ^ self ].
-
-	propertyPanel := DdPropertyPanelPresenter new.
-
-	propertyPanel
-		target: selected
-		subPresenter: selectedSub
-		onClass: selected class
-		canvas: workArea.
-
-	self rebuildLayout
+    propertyPanel := DdPropertyPanelPresenter new.
+    propertyPanel
+        target: selected
+        subPresenter: selectedSub
+        onClass: selected class
+        canvas: workArea.
+    self rebuildLayout
 ]
 
 { #category : 'initialization' }

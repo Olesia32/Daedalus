@@ -25,12 +25,6 @@ DdCanvasPresenter class >> onPresenter: aPresenter [
 ]
 
 { #category : 'as yet unclassified' }
-DdCanvasPresenter >> announceSelectionChanged [
-
-	self triggerEvent: #selectionChanged
-]
-
-{ #category : 'as yet unclassified' }
 DdCanvasPresenter >> clickedMorphFromEvent: arg1 [
 
 	| tmp1 |
@@ -56,12 +50,6 @@ DdCanvasPresenter >> ddOnMouseDown: anEvent [
 
 	(anEvent respondsTo: #wasHandled:) ifTrue: [
 		anEvent wasHandled: true ]
-]
-
-{ #category : 'as yet unclassified' }
-DdCanvasPresenter >> ddOnMouseUp: arg1 [
-
-	self ddOnMouseDown: arg1
 ]
 
 { #category : 'as yet unclassified' }
@@ -91,14 +79,6 @@ DdCanvasPresenter >> defaultLayout [
 		  spacing: 30;
 		  add: previewPresenter expand: false;
 		  yourself
-]
-
-{ #category : 'as yet unclassified' }
-DdCanvasPresenter >> defaultLayoutSourceOf: aClass [
-
-	| method |
-	method := aClass compiledMethodAt: #defaultLayout.
-	^ method sourceCode
 ]
 
 { #category : 'accessing' }
@@ -138,13 +118,6 @@ DdCanvasPresenter >> instVarNameForPresenterInRoot: aPresenter [
 	^ nil
 ]
 
-{ #category : 'as yet unclassified' }
-DdCanvasPresenter >> installClickHookOnWidget: arg1 [
-
-	arg1 on: #mouseDown send: #ddOnMouseDown: to: self.
-	arg1 submorphs do: [ :arg2 | self installClickHookOnWidget: arg2 ]
-]
-
 { #category : 'accessing' }
 DdCanvasPresenter >> installClickHooks [
 
@@ -162,43 +135,25 @@ DdCanvasPresenter >> installClickHooks [
 					tmp3 := tmp3 + 1 ] ].
 ]
 
-{ #category : 'as yet unclassified' }
-DdCanvasPresenter >> logSelectionFor: aPresenter clickedMorph: aMorph [ 
-	| varName |
-	varName := self instVarNameForPresenterInRoot: aPresenter.
-
-	Transcript
-		show: 'Selected presenter: '; show: aPresenter class name;
-		show: ' | instVar in root: '; show: varName printString;
-		show: ' | clicked morph: '; show: aMorph class name;
-		cr.
-]
-
-{ #category : 'as yet unclassified' }
-DdCanvasPresenter >> presenterFromClickedMorph: aMorph [
-
-	| m adapter spPresenter current |
-	m := aMorph.
-
-	[ m notNil ] whileTrue: [
-			(m respondsTo: #model) ifTrue: [
-					adapter := m model.
-
-					(adapter respondsTo: #owner) ifTrue: [
-							spPresenter := adapter owner.
-							spPresenter ifNotNil: [
-									current := spPresenter owner.
-
-									[ current isKindOf: SpPresenter ] whileTrue: [
-											(presenterIndex presenters includes: current) ifTrue: [
-													(current class name beginsWith: 'Sp') ifFalse: [
-														^ Association key: current value: spPresenter ] ].
-											current ifNil: [ ^ nil ].
-											current := current owner ] ] ] ].
-
-			m := m owner ].
-
-	^ nil
+{ #category : 'accessing' }
+DdCanvasPresenter >> presenterFromClickedMorph: aMorph [ 
+    | m adapter spPresenter current |
+    m := aMorph.
+    [ m notNil ] whileTrue: [
+        (m respondsTo: #model) ifTrue: [
+            adapter := m model.
+            (adapter respondsTo: #owner) ifTrue: [
+                spPresenter := adapter owner.
+                spPresenter ifNotNil: [
+                    current := spPresenter owner.
+                    [ current isKindOf: SpPresenter ] whileTrue: [
+                        (presenterIndex presenters includes: current) ifTrue: [
+                            (current class name beginsWith: 'Sp') ifFalse: [
+                                ^ Association key: current value: spPresenter ] ].
+                        current ifNil: [ ^ nil ].
+                        current := current owner ] ] ] ].
+        m := m owner ].
+    ^ nil
 ]
 
 { #category : 'accessing' }
@@ -212,21 +167,26 @@ DdCanvasPresenter >> rebuildPreview [
 
 	| newPresenter |
 	newPresenter := editedPresenter class new.
+	newPresenter application: self application.
 	newPresenter build.
-
 	rootPreviewPresenter := newPresenter.
-
 	presenterIndex := DdPresenterIndex new buildFromRootPresenter:
 		                  rootPreviewPresenter.
 	self layout: (SpBoxLayout newTopToBottom
 			 spacing: 30;
 			 add: rootPreviewPresenter expand: false;
 			 yourself).
-
 	self needRebuild: true.
+
 	self updatePresenter.
 
 	UIManager default defer: [ self installClickHooks ]
+]
+
+{ #category : 'accessing' }
+DdCanvasPresenter >> refreshPreview [ 
+    rootPreviewPresenter ifNil: [ ^ self rebuildPreview ].
+    UIManager default defer: [ self installClickHooks ]
 ]
 
 { #category : 'accessing' }
