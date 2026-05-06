@@ -3,90 +3,91 @@ Class {
 	#superclass : 'SpPresenter',
 	#instVars : [
 		'targetPresenter',
-		'labelInput',
+		'subPresenter',
 		'editedClass',
 		'canvas',
+		'descriptor',
 		'applyButton',
-		'subPresenter'
+		'descriptorPanel'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
 	#tag : 'Daedalus-UI'
 }
 
-{ #category : 'as yet unclassified' }
-DdPropertyPanelPresenter >> applyLabelChange: aString [ 
-    | props builder source varName |
+{ #category : 'private' }
+DdPropertyPanelPresenter >> applyChanges [ 
+    | propsList builder source varName |
+    descriptor ifNil: [ ^ self ].
     varName := self varNameForSubPresenter.
     varName ifNil: [ ^ self ].
-    props := DdLabelProperties new
-                 varName: varName;
-                 label: aString;
-                 yourself.
+    
+    propsList := descriptor collectPropertiesWithVarName: varName.
+    propsList ifEmpty: [ ^ self ].
+
     builder := DdInitializeCodeBuilder new
-                   presenterClass: editedClass
-                   properties: { props }.
+        presenterClass: editedClass
+        properties: propsList.
     source := builder generate.
+
     (editedClass compile: source)
         ifNil: [ self inform: 'Compilation error' ]
         ifNotNil: [
-            (targetPresenter instVarNamed: varName) label: aString ]
+            propsList do: [ :props | props applyTo: subPresenter ] ]
 ]
 
 { #category : 'layout' }
-DdPropertyPanelPresenter >> defaultLayout [
-
-	| tmp2 |
-	tmp2 := SpBoxLayout newTopToBottom.
-	tmp2
-		spacing: 10;
-		add: 'Properties' expand: false;
-		add: labelInput expand: false;
-		add: applyButton expand: false.
-	^ tmp2 yourself
+DdPropertyPanelPresenter >> defaultLayout [ 
+    | layout |
+    layout := SpBoxLayout newTopToBottom
+        spacing: 6;
+        add: 'Properties' expand: false.
+    descriptorPanel ifNotNil: [
+        layout add: descriptorPanel expand: true ].
+    layout add: applyButton expand: false.
+    ^ layout yourself
 ]
 
 { #category : 'initialization' }
-DdPropertyPanelPresenter >> initializePresenters [
-
-	super initializePresenters.
-	labelInput := self newTextInput.
-	labelInput placeholder: ''.
-	applyButton := self newButton.
-	applyButton
-		label: 'Apply';
-		action: [ self applyLabelChange: labelInput text ]
+DdPropertyPanelPresenter >> initializePresenters [ 
+    super initializePresenters.
+    applyButton := self newButton.
+    applyButton
+        label: 'Apply';
+        action: [ self applyChanges ]
 ]
 
 { #category : 'as yet unclassified' }
-DdPropertyPanelPresenter >> loadPropertiesFor: arg1 [ 
-    arg1 ifNil: [
-        labelInput text: ''.
-        ^ self ].
+DdPropertyPanelPresenter >> rebuildDescriptorPanel [
 
-    [ labelInput text: arg1 label ]
-        on: Error
-        do: [ labelInput text: '' ]
+	subPresenter ifNil: [ ^ self ].
+	descriptor := DdPropertyDescriptor forPresenter: subPresenter.
+	descriptor ifNil: [ ^ self ].
+	descriptorPanel := descriptor buildPanelFor: subPresenter.
+	self rebuildLayout
+]
 
+{ #category : 'private' }
+DdPropertyPanelPresenter >> rebuildLayout [ 
+    self layout: self defaultLayout.
+    self needRebuild: true.
+    self updatePresenter
 ]
 
 { #category : 'as yet unclassified' }
-DdPropertyPanelPresenter >> target: aPresenter subPresenter: aSubPresenter onClass: aClass canvas: aCanvas [ 
+DdPropertyPanelPresenter >> target: aPresenter subPresenter: aSubPresenter onClass: aClass canvas: aCanvas [
 
-    targetPresenter := aPresenter.
-    subPresenter := aSubPresenter.
-    editedClass := aClass.
-    canvas := aCanvas.
-
-    self loadPropertiesFor: aSubPresenter
-
+	targetPresenter := aPresenter.
+	subPresenter := aSubPresenter.
+	editedClass := aClass.
+	canvas := aCanvas.
+	self rebuildDescriptorPanel
 ]
 
 { #category : 'as yet unclassified' }
 DdPropertyPanelPresenter >> varNameForSubPresenter [ 
     | names |
-    targetPresenter ifNil: [ ^ 'label' ].
-
+    targetPresenter ifNil: [ ^ nil ].
     names := targetPresenter class allInstVarNames.
     1 to: targetPresenter class instSize do: [ :i |
         | ivar |
@@ -94,6 +95,5 @@ DdPropertyPanelPresenter >> varNameForSubPresenter [
         ivar == subPresenter ifTrue: [ ^ names at: i ].
         (ivar respondsTo: #mainPresenter) ifTrue: [
             ivar mainPresenter == subPresenter ifTrue: [ ^ names at: i ] ] ].
-
     ^ nil
 ]

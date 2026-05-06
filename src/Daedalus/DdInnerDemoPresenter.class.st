@@ -2,7 +2,7 @@ Class {
 	#name : 'DdInnerDemoPresenter',
 	#superclass : 'SpPresenter',
 	#instVars : [
-		'label'
+		'button'
 	],
 	#category : 'Daedalus-Daedalus-Services',
 	#package : 'Daedalus',
@@ -10,16 +10,23 @@ Class {
 }
 
 { #category : 'layout' }
-DdInnerDemoPresenter >> defaultLayout [ 
+DdInnerDemoPresenter >> defaultLayout [
+
 	^ SpBoxLayout newTopToBottom
-		add: label;
-		yourself
+		  add: button ;
+		  yourself
 ]
 
 { #category : 'initialization' }
 DdInnerDemoPresenter >> initializePresenters [
 
 	super initializePresenters.
-	label := LabelPresenter new.
-	label label: 'Inne'
+	button := ButtonPresenter new.
+	button label: 'Inner'.
+	button fontSize: 12.
+	button color: '#red'.
+	button bold.
+	button borderWidth: 2.
+	button backgroundColor: '#white'.
+	button borderColor: '#green'
 ]

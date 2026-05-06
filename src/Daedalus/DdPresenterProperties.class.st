@@ -9,6 +9,12 @@ Class {
 	#tag : 'Daedalus-DataModel'
 }
 
+{ #category : 'translating' }
+DdPresenterProperties >> patchSource: anAst [ 
+    "Абстрактний — підкласи реалізують"
+    ^ self subclassResponsibility
+]
+
 { #category : 'accessing' }
 DdPresenterProperties >> varName [ 
 ^ varName 

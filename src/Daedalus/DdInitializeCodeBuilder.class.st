@@ -12,29 +12,28 @@ Class {
 
 { #category : 'as yet unclassified' }
 DdInitializeCodeBuilder >> factoryMethodFor: props [ 
-    (props isKindOf: DdLabelProperties) ifTrue: [ ^ 'newLabel' ].
+    (props isKindOf: DdTextProperties) ifTrue: [ ^ 'newLabel' ].
     ^ 'new' "fallback"
 ]
 
 { #category : 'translating' }
 DdInitializeCodeBuilder >> generate [ 
-    | existingSource |
-    existingSource := presenterClass 
-        sourceCodeAt: #initializePresenters 
-        ifAbsent: [ ^ self generateFresh ].
-    ^ self patchSource: existingSource
+    | method existingSource ast |
+    method := presenterClass
+        compiledMethodAt: #initializePresenters
+        ifAbsent: [ nil ].
+    existingSource := method ifNil: [ ^ self generateFresh ] ifNotNil: [ method sourceCode ].
+    ast := RBParser parseMethod: existingSource.
+    propertiesList do: [ :props | props patchSource: ast ].
+    ^ ast formattedCode
 ]
 
 { #category : 'as yet unclassified' }
 DdInitializeCodeBuilder >> generateFresh [ 
-    | stream props |
+    | stream |
     stream := WriteStream on: String new.
     stream nextPutAll: 'initializePresenters'; cr.
     stream tab; nextPutAll: 'super initializePresenters.'; cr.
-    propertiesList do: [ :p |
-        stream tab; nextPutAll: p varName; nextPutAll: ' := self newLabel.'; cr.
-        stream tab; nextPutAll: p varName; nextPutAll: ' label: '; print: p label; nextPutAll: '.'; cr.
-    ].
     ^ stream contents
 ]
 

@@ -25,7 +25,10 @@ DdEmbeddedDemoPresenter >> initializePresenters [
 	super initializePresenters.
 	titleLabel := LabelPresenter new.
 	titleLabel label: 'Embedde'.
-	inner := DdInnerDemoPresenter new
+	inner := DdInnerDemoPresenter new.
+	titleLabel fontSize: 12.
+	titleLabel backgroundColor: '#red'.
+	titleLabel color: '#green'
 ]
 
 { #category : 'accessing' }

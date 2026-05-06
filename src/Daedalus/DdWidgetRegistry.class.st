@@ -16,9 +16,10 @@ DdWidgetRegistry class >> all [
 			   presenter: SpButtonPresenter).
 
 		  (DdWidgetDescriptor new
-			   label: 'Label'
-			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: SpLabelPresenter).
+    label: 'Label'
+    icon: (Smalltalk ui icons iconNamed: #add)
+    presenter: LabelPresenter
+    descriptor: DdLabelPropertyDescriptor new).
 
 		  (DdWidgetDescriptor new
 			   label: 'Text Input'
@@ -98,5 +99,5 @@ DdWidgetRegistry class >> all [
 		  (DdWidgetDescriptor new
 			   label: 'Notebook'
 			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: (PresenterDecorator wrap: SpNotebookPresenter)). }
+			   presenter: (PresenterDecorator wrap: SpNotebookPresenter)) }
 ]

@@ -77,7 +77,7 @@ DdCanvasPresenter >> defaultLayout [
 
 	^ SpBoxLayout newTopToBottom
 		  spacing: 30;
-		  add: previewPresenter expand: false;
+		  add: previewPresenter;
 		  yourself
 ]
 

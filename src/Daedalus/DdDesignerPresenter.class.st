@@ -25,16 +25,16 @@ DdDesignerPresenter class >> onPresenter: aPresenterClass [
 { #category : 'layout' }
 DdDesignerPresenter >> defaultLayout [
 
-    ^ SpBoxLayout newTopToBottom
-        spacing: 10;
-        add: (SpBoxLayout newLeftToRight
-            spacing: 20;
-            add: widgetPalette;
-            add: workArea;
-            add: propertyPanel;  
-            yourself);
-        add: codeEditor;
-        yourself
+	^ SpBoxLayout newTopToBottom
+		  spacing: 10;
+		  add: (SpBoxLayout newLeftToRight
+				   spacing: 20;
+				   add: widgetPalette width: 150;
+				   add: workArea;
+				   add: propertyPanel width: 250;
+				   yourself);
+		  add: codeEditor height: 150;
+		  yourself
 ]
 
 { #category : 'initialization' }
@@ -45,24 +45,27 @@ DdDesignerPresenter >> initializePresenters [
 ]
 
 { #category : 'initialization' }
-DdDesignerPresenter >> onSelectionChanged [ 
-    | selected selectedSub |
-    selected := workArea selectedPresenter.
-    selectedSub := workArea selectedSubPresenter.
-    selected ifNil: [ ^ self ].
+DdDesignerPresenter >> onSelectionChanged [
 
-    "Якщо selected є BasePresenter — піднімаємось до власника"
-    (selected respondsTo: #mainPresenter) ifTrue: [
-        selectedSub := selected.
-        selected := selected owner ].
+	| selected selectedSub |
+	selected := workArea selectedPresenter.
+	selectedSub := workArea selectedSubPresenter.
+	selected ifNil: [ ^ self ].
 
-    propertyPanel := DdPropertyPanelPresenter new.
-    propertyPanel
-        target: selected
-        subPresenter: selectedSub
-        onClass: selected class
-        canvas: workArea.
-    self rebuildLayout
+	"Якщо selected є BasePresenter — піднімаємось до власника"
+	(selected respondsTo: #mainPresenter) ifTrue: [
+			selectedSub := selected.
+			selected := selected owner ].
+	(selected isKindOf: RadioGroupPresenter) ifTrue: [
+			selectedSub := selected.
+			selected := selected owner ].
+	propertyPanel := DdPropertyPanelPresenter new.
+	propertyPanel
+		target: selected
+		subPresenter: selectedSub
+		onClass: selected class
+		canvas: workArea.
+	self rebuildLayout
 ]
 
 { #category : 'initialization' }
@@ -85,26 +88,23 @@ DdDesignerPresenter >> presenterClass: aClass [
 	workArea installClickHooks
 ]
 
-{ #category : 'initialization' }
-DdDesignerPresenter >> rebuildLayout [ 
+{ #category : 'private' }
+DdDesignerPresenter >> rebuildLayout [
 
-    | newLayout |
-
-    newLayout := SpBoxLayout newTopToBottom
-        spacing: 10;
-        add: (SpBoxLayout newLeftToRight
-            spacing: 20;
-            add: widgetPalette;
-            add: workArea;
-            add: propertyPanel;
-            yourself);
-        add: codeEditor;
-        yourself.
-
-    self layout: newLayout.
-    self needRebuild: true.
-    self updatePresenter.
-
-    WorldMorph doOneCycle.
-    workArea installClickHooks.
+	| newLayout |
+	newLayout := SpBoxLayout newTopToBottom
+		             spacing: 10;
+		             add: (SpBoxLayout newLeftToRight
+				              spacing: 20;
+				              add: widgetPalette width: 150;
+				              add: workArea;
+				              add: propertyPanel width: 250;
+				              yourself);
+		             add: codeEditor height: 150;
+		             yourself.
+	self layout: newLayout.
+	self needRebuild: true.
+	self updatePresenter.
+	WorldMorph doOneCycle.
+	workArea installClickHooks
 ]
