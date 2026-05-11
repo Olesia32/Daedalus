@@ -16,10 +16,10 @@ DdWidgetRegistry class >> all [
 			   presenter: SpButtonPresenter).
 
 		  (DdWidgetDescriptor new
-    label: 'Label'
-    icon: (Smalltalk ui icons iconNamed: #add)
-    presenter: LabelPresenter
-    descriptor: DdLabelPropertyDescriptor new).
+			   label: 'Label'
+			   icon: (Smalltalk ui icons iconNamed: #add)
+			   presenter: LabelPresenter
+			   descriptor: DdLabelPropertyDescriptor new).
 
 		  (DdWidgetDescriptor new
 			   label: 'Text Input'
@@ -47,7 +47,7 @@ DdWidgetRegistry class >> all [
 			   presenter: (PresenterDecorator wrap: SpCheckBoxPresenter)).
 
 		  (DdWidgetDescriptor new
-			   label: 'Radio button'
+			   label: 'Group of radiobuttons'
 			   icon: (Smalltalk ui icons iconNamed: #add)
 			   presenter: RadioGroupPresenter).
 
@@ -55,16 +55,6 @@ DdWidgetRegistry class >> all [
 			   label: 'Group of checkboxes'
 			   icon: (Smalltalk ui icons iconNamed: #add)
 			   presenter: CheckboxGroupPresenter).
-
-		  (DdWidgetDescriptor new
-			   label: 'Toggle button'
-			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: (PresenterDecorator wrap: SpToggleButtonPresenter)).
-
-		  (DdWidgetDescriptor new
-			   label: 'Image'
-			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: (PresenterDecorator wrap: SpImagePresenter)).
 
 		  (DdWidgetDescriptor new
 			   label: 'Progress bar'

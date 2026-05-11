@@ -16,45 +16,69 @@ Class {
 }
 
 { #category : 'private' }
-DdPropertyPanelPresenter >> applyChanges [ 
-    | propsList builder source varName |
-    descriptor ifNil: [ ^ self ].
-    varName := self varNameForSubPresenter.
-    varName ifNil: [ ^ self ].
-    
-    propsList := descriptor collectPropertiesWithVarName: varName.
-    propsList ifEmpty: [ ^ self ].
+DdPropertyPanelPresenter >> applyChanges [
 
-    builder := DdInitializeCodeBuilder new
-        presenterClass: editedClass
-        properties: propsList.
-    source := builder generate.
+	| propsList builder source varName |
+	descriptor ifNil: [ ^ self ].
+	varName := self varNameForSubPresenter.
+	varName ifNil: [ ^ self ].
 
-    (editedClass compile: source)
-        ifNil: [ self inform: 'Compilation error' ]
-        ifNotNil: [
-            propsList do: [ :props | props applyTo: subPresenter ] ]
+	propsList := descriptor collectPropertiesWithVarName: varName.
+	propsList ifEmpty: [ ^ self ].
+
+	builder := DdInitializeCodeBuilder new
+		           presenterClass: editedClass
+		           properties: propsList.
+	source := builder generate.
+
+	(editedClass compile: source)
+		ifNil: [ self inform: 'Compilation error' ]
+		ifNotNil: [ propsList do: [ :props | props applyTo: subPresenter ]. canvas refreshPreview ]
 ]
 
 { #category : 'layout' }
 DdPropertyPanelPresenter >> defaultLayout [ 
-    | layout |
+
+    | layout titleLabel title |
+    
+    title := self varNameForSubPresenter ifNil: [ 'Properties' ].
+
+    titleLabel := SpLabelPresenter new
+        label: title;
+        yourself.
+
     layout := SpBoxLayout newTopToBottom
         spacing: 6;
-        add: 'Properties' expand: false.
+        add: titleLabel expand: false.
+
     descriptorPanel ifNotNil: [
         layout add: descriptorPanel expand: true ].
+
     layout add: applyButton expand: false.
+
     ^ layout yourself
 ]
 
 { #category : 'initialization' }
 DdPropertyPanelPresenter >> initializePresenters [ 
+
     super initializePresenters.
+
     applyButton := self newButton.
     applyButton
         label: 'Apply';
-        action: [ self applyChanges ]
+        action: [ self applyChanges ].
+
+    descriptorPanel := SpNotebookPresenter new.
+    descriptorPanel
+        addPage: (SpNotebookPage title: 'Properties' provider: [ 
+            SpPresenter new 
+                layout: SpBoxLayout newTopToBottom; 
+                yourself ]);
+        addPage: (SpNotebookPage title: 'Style' provider: [ 
+            SpPresenter new 
+                layout: SpBoxLayout newTopToBottom; 
+                yourself ]).
 ]
 
 { #category : 'as yet unclassified' }
@@ -63,7 +87,16 @@ DdPropertyPanelPresenter >> rebuildDescriptorPanel [
 	subPresenter ifNil: [ ^ self ].
 	descriptor := DdPropertyDescriptor forPresenter: subPresenter.
 	descriptor ifNil: [ ^ self ].
-	descriptorPanel := descriptor buildPanelFor: subPresenter.
+	descriptorPanel pages copy do: [ :p | descriptorPanel removePage: p ].
+
+	descriptorPanel
+		addPage: (SpNotebookPage
+				 title: 'Properties'
+				 provider: [ descriptor buildPanelFor: subPresenter ]);
+		addPage: (SpNotebookPage
+				 title: 'Style'
+				 provider: [ descriptor buildStylePanelFor: subPresenter ]).
+
 	self rebuildLayout
 ]
 

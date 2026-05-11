@@ -41,11 +41,10 @@ DdWidgetPalettePresenter >> initializePresenters [
 		items: model;
 		display: [ :item | item label ];
 		sortingBlock: [ :a :b | a label < b label ];
-		displayIcon: [ :item | item icon ];
 		dragEnabled: true.
 	filteredInput := TextInputPresenter new
 		                 isValidationField: false;
 		                 height: 25;
 		                 placeholder: 'Choose widget...'.
-	self connectFilter 
+	self connectFilter
 ]

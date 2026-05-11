@@ -33,23 +33,17 @@ DdCanvasPresenter >> clickedMorphFromEvent: arg1 [
 ]
 
 { #category : 'as yet unclassified' }
-DdCanvasPresenter >> ddOnMouseDown: anEvent [
-
-	| clickedMorph result |
-
-	clickedMorph := self clickedMorphFromEvent: anEvent.
-	clickedMorph ifNil: [ ^ self ].
-
-	result := self presenterFromClickedMorph: clickedMorph.
-	result ifNil: [ ^ self ].
-
-	selectedPresenter := result key.
-	selectedSubPresenter := result value.
-
-	designer ifNotNil: [ designer onSelectionChanged ].
-
-	(anEvent respondsTo: #wasHandled:) ifTrue: [
-		anEvent wasHandled: true ]
+DdCanvasPresenter >> ddOnMouseDown: anEvent [ 
+    | clickedMorph result |
+    clickedMorph := self clickedMorphFromEvent: anEvent.
+    clickedMorph ifNil: [ ^ self ].
+    result := self presenterFromClickedMorph: clickedMorph.
+    result ifNil: [ ^ self ].
+    selectedPresenter := result key.
+    selectedSubPresenter := result value.
+    designer ifNotNil: [ designer onSelectionChanged ].
+    (anEvent respondsTo: #wasHandled:) ifTrue: [
+        anEvent wasHandled: true ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -75,10 +69,15 @@ DdCanvasPresenter >> deepestMorphIn: arg1 at: arg2 [
 { #category : 'layout' }
 DdCanvasPresenter >> defaultLayout [
 
-	^ SpBoxLayout newTopToBottom
+	^ SpBoxLayout new
 		  spacing: 30;
 		  add: previewPresenter;
 		  yourself
+]
+
+{ #category : 'accessing' }
+DdCanvasPresenter >> designer [
+  ^designer 
 ]
 
 { #category : 'accessing' }
@@ -167,26 +166,42 @@ DdCanvasPresenter >> rebuildPreview [
 
 	| newPresenter |
 	newPresenter := editedPresenter class new.
-	newPresenter application: self application.
 	newPresenter build.
 	rootPreviewPresenter := newPresenter.
 	presenterIndex := DdPresenterIndex new buildFromRootPresenter:
 		                  rootPreviewPresenter.
-	self layout: (SpBoxLayout newTopToBottom
+	self layout: (SpBoxLayout new
 			 spacing: 30;
-			 add: rootPreviewPresenter expand: false;
+			 add: rootPreviewPresenter;
 			 yourself).
 	self needRebuild: true.
 
 	self updatePresenter.
-
 	UIManager default defer: [ self installClickHooks ]
 ]
 
 { #category : 'accessing' }
 DdCanvasPresenter >> refreshPreview [ 
-    rootPreviewPresenter ifNil: [ ^ self rebuildPreview ].
-    UIManager default defer: [ self installClickHooks ]
+    | varName |
+    varName := selectedSubPresenter ifNotNil: [ 
+        self instVarNameForPresenterInRoot: selectedSubPresenter ].
+    
+    SpNullApplication skipReset: true.
+    [
+        rootPreviewPresenter initializePresenters.
+        rootPreviewPresenter layout: rootPreviewPresenter defaultLayout.
+    ] ensure: [ SpNullApplication skipReset: false ].
+    
+    presenterIndex := DdPresenterIndex new buildFromRootPresenter: rootPreviewPresenter.
+    varName ifNotNil: [
+        | idx |
+        idx := rootPreviewPresenter class allInstVarNames indexOf: varName.
+        idx > 0 ifTrue: [
+            selectedSubPresenter := rootPreviewPresenter instVarAt: idx ] ].
+    
+    UIManager default defer: [
+        self installClickHooks.
+        designer ifNotNil: [ designer onSelectionChanged ] ]
 ]
 
 { #category : 'accessing' }
@@ -205,14 +220,4 @@ DdCanvasPresenter >> selectedPresenter [
 DdCanvasPresenter >> selectedSubPresenter [ 
 
     ^ selectedSubPresenter
-]
-
-{ #category : 'as yet unclassified' }
-DdCanvasPresenter >> updateLayoutMethodFor: aClass with: source [
-    (aClass compiler compile: source)
-        ifNil: [ self inform: 'Compilation error' ]
-        ifNotNil: [
-            self rebuildPreview.
-            self inform: 'Updated!' ].
-
 ]

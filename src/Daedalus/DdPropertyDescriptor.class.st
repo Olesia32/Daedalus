@@ -26,10 +26,16 @@ DdPropertyDescriptor class >> forPresenter: aPresenter [
 		^ DdProgressBarPropertyDescriptor new ].
 	(mainP isKindOf: SpSliderPresenter) ifTrue: [
 		^ DdSliderPropertyDescriptor new ].
+	(mainP isKindOf: SpDatePresenter) ifTrue: [
+		^ DdDatePickerPropertyDescriptor new ].
 	aPresenter class name = 'RadioGroupPresenter' ifTrue: [
 		^ DdRadioGroupPropertyDescriptor new ].
-
-	"RadioGroupPresenter — перевіряємо через клас імені"
+	aPresenter class name = 'CheckboxGroupPresenter' ifTrue: [
+		^ DdCheckboxGroupPropertyDescriptor new ].
+	aPresenter class name = 'ComboBoxPresenter' ifTrue: [
+		^ DdComboboxPropertyDescriptor new ].
+	aPresenter class name = 'TimePickerPresenter' ifTrue: [
+		^ DdTimePickerPropertyDescriptor new ].
 
 	^ nil
 ]

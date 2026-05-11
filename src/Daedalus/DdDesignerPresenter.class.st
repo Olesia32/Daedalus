@@ -47,7 +47,7 @@ DdDesignerPresenter >> initializePresenters [
 { #category : 'initialization' }
 DdDesignerPresenter >> onSelectionChanged [
 
-	| selected selectedSub |
+	| selected selectedSub varName |
 	selected := workArea selectedPresenter.
 	selectedSub := workArea selectedSubPresenter.
 	selected ifNil: [ ^ self ].
@@ -59,13 +59,36 @@ DdDesignerPresenter >> onSelectionChanged [
 	(selected isKindOf: RadioGroupPresenter) ifTrue: [
 			selectedSub := selected.
 			selected := selected owner ].
+	(selected isKindOf: CheckboxGroupPresenter) ifTrue: [
+			selectedSub := selected.
+			selected := selected owner ].
+	(selected isKindOf: ComboBoxPresenter) ifTrue: [
+			selectedSub := selected.
+			selected := selected owner ].
+	(selected isKindOf: TimePickerPresenter) ifTrue: [
+			selectedSub := selected.
+			selected := selected owner ].
 	propertyPanel := DdPropertyPanelPresenter new.
 	propertyPanel
 		target: selected
 		subPresenter: selectedSub
 		onClass: selected class
 		canvas: workArea.
-	self rebuildLayout
+
+	varName := workArea instVarNameForPresenterInRoot: selectedSub.
+	self rebuildLayout.
+	codeEditor highlightVarName: varName
+]
+
+{ #category : 'as yet unclassified' }
+DdDesignerPresenter >> onSelectionCleared [ 
+    propertyPanel := DdPropertyPanelPresenter new.
+    propertyPanel
+        target: nil
+        subPresenter: nil
+        onClass: nil
+        canvas: workArea.
+    self rebuildLayout
 ]
 
 { #category : 'initialization' }
@@ -76,14 +99,14 @@ DdDesignerPresenter >> presenterClass: aClass [
 	workArea := DdCanvasPresenter onPresenter: presenter new.
 	workArea designer: self.
 	codeEditor classToEdit: presenter.
-
+   codeEditor designer: self.
 	propertyPanel := DdPropertyPanelPresenter new.
 	propertyPanel
 		target: nil
 		subPresenter: nil
 		onClass: nil
 		canvas: workArea.
-		
+
 	WorldMorph doOneCycle.
 	workArea installClickHooks
 ]
@@ -107,4 +130,9 @@ DdDesignerPresenter >> rebuildLayout [
 	self updatePresenter.
 	WorldMorph doOneCycle.
 	workArea installClickHooks
+]
+
+{ #category : 'accessing' }
+DdDesignerPresenter >> workArea [
+  ^workArea 
 ]

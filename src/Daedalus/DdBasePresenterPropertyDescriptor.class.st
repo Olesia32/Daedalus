@@ -22,42 +22,25 @@ DdBasePresenterPropertyDescriptor >> addSpecificFieldsTo: aPanel for: aPresenter
 ]
 
 { #category : 'as yet unclassified' }
-DdBasePresenterPropertyDescriptor >> buildPanelFor: aPresenter [
+DdBasePresenterPropertyDescriptor >> buildPanelFor: aPresenter [ 
 
-	| panel tmp2 |
-	fontSizeInput := SpTextInputFieldPresenter new.
-	colorInput := SpTextInputFieldPresenter new.
-	backgroundColorInput := SpTextInputFieldPresenter new.
-	borderColorInput := SpTextInputFieldPresenter new.
-	borderWidthInput := SpTextInputFieldPresenter new.
-	boldCheckbox := SpCheckBoxPresenter new label: 'Bold'.
-	italicCheckbox := SpCheckBoxPresenter new label: 'Italic'.
-	widthInput := SpTextInputFieldPresenter new.
-	heightInput := SpTextInputFieldPresenter new.
-	[
-		| tmp3 |
-		tmp3 := aPresenter styleProperties.
-		fontSizeInput text: (tmp3 at: #fontSize ifAbsent: [ '' ]) asString.
-		colorInput text: (tmp3 at: #color ifAbsent: [ '' ]).
-		backgroundColorInput text:
-			(tmp3 at: #backgroundColor ifAbsent: [ '' ]).
-		borderColorInput text: (tmp3 at: #borderColor ifAbsent: [ '' ]).
-		borderWidthInput text:
-			(tmp3 at: #borderWidth ifAbsent: [ '' ]) asString.
-		boldCheckbox state: (tmp3 at: #bold ifAbsent: [ false ]).
-		italicCheckbox state: (tmp3 at: #italic ifAbsent: [ false ]).
-		widthInput text: (tmp3 at: #width ifAbsent: [ '' ]) asString.
-		heightInput text: (tmp3 at: #height ifAbsent: [ '' ]) asString ]
-		on: Error
-		do: [ ].
-	panel := SpBoxLayout newTopToBottom spacing: 4.
-	
-    "Специфічні поля зверху — підкласи додають свої"
-    self addSpecificFieldsTo: panel for: aPresenter.
+    | specificLayout |
+    self initializeFieldsFor: aPresenter. 
+    specificLayout := SpBoxLayout newTopToBottom spacing: 4.
+    self addSpecificFieldsTo: specificLayout for: aPresenter.
 
-    "Стильові поля"
-    panel
+    ^ SpPresenter new
+        layout: specificLayout;
+        yourself
+]
 
+{ #category : 'as yet unclassified' }
+DdBasePresenterPropertyDescriptor >> buildStylePanelFor: aPresenter [
+
+	| styleLayout |
+	fontSizeInput ifNil: [ self initializeFieldsFor: aPresenter ].
+	styleLayout := SpBoxLayout newTopToBottom spacing: 4.
+	styleLayout
 		add: (self rowFor: 'Font size' input: fontSizeInput) expand: false;
 		add: (self rowFor: 'Color' input: colorInput) expand: false;
 		add: (self rowFor: 'Background' input: backgroundColorInput)
@@ -70,9 +53,10 @@ DdBasePresenterPropertyDescriptor >> buildPanelFor: aPresenter [
 		add: italicCheckbox expand: false;
 		add: (self rowFor: 'Width' input: widthInput) expand: false;
 		add: (self rowFor: 'Height' input: heightInput) expand: false.
-	tmp2 := SpPresenter new.
-	tmp2 layout: panel.
-	^ tmp2
+
+	^ SpPresenter new
+		  layout: styleLayout;
+		  yourself
 ]
 
 { #category : 'as yet unclassified' }
@@ -99,6 +83,33 @@ DdBasePresenterPropertyDescriptor >> collectPropertiesWithVarName: arg1 [
 		tmp2 at: 'height:' put: arg8 asInteger ].
 	tmp2 properties ifNotEmpty: [ tmp1 add: tmp2 ].
 	^ tmp1
+]
+
+{ #category : 'initialization' }
+DdBasePresenterPropertyDescriptor >> initializeFieldsFor: aPresenter [ 
+
+    fontSizeInput        := SpTextInputFieldPresenter new.
+    colorInput           := SpTextInputFieldPresenter new.
+    backgroundColorInput := SpTextInputFieldPresenter new.
+    borderColorInput     := SpTextInputFieldPresenter new.
+    borderWidthInput     := SpTextInputFieldPresenter new.
+    boldCheckbox         := SpCheckBoxPresenter new label: 'Bold'.
+    italicCheckbox       := SpCheckBoxPresenter new label: 'Italic'.
+    widthInput           := SpTextInputFieldPresenter new.
+    heightInput          := SpTextInputFieldPresenter new.
+
+    [ | tmp |
+      tmp := aPresenter styleProperties.
+      fontSizeInput        text: (tmp at: #fontSize        ifAbsent: [ '' ]) asString.
+      colorInput           text: (tmp at: #color           ifAbsent: [ '' ]).
+      backgroundColorInput text: (tmp at: #backgroundColor ifAbsent: [ '' ]).
+      borderColorInput     text: (tmp at: #borderColor     ifAbsent: [ '' ]).
+      borderWidthInput     text: (tmp at: #borderWidth     ifAbsent: [ '' ]) asString.
+      boldCheckbox   state: (tmp at: #bold   ifAbsent: [ false ]).
+      italicCheckbox state: (tmp at: #italic ifAbsent: [ false ]).
+      widthInput     text: (tmp at: #width   ifAbsent: [ '' ]) asString.
+      heightInput    text: (tmp at: #height  ifAbsent: [ '' ]) asString.
+    ] on: Error do: [ ].
 ]
 
 { #category : 'as yet unclassified' }
