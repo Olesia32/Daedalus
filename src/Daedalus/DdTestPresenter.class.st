@@ -3,6 +3,9 @@ Class {
 	#superclass : 'SpPresenter',
 	#instVars : [
 		'titleLabel',
+		'table',
+		'list',
+		'textArea',
 		'submitButton',
 		'nameInput',
 		'agreeCheckbox',
@@ -30,7 +33,7 @@ DdTestPresenter >> defaultLayout [
 		  add: agreeCheckbox expand: false;
 		  add: genderGroup expand: false;
 		  add: hobyGroup expand: false;
-		  add: time expand: false;
+		  add: textArea expand: true;
 		  add: submitButton expand: false;
 		  yourself
 ]
@@ -43,6 +46,38 @@ DdTestPresenter >> initializePresenters [
 	titleLabel := LabelPresenter new.
 	titleLabel label: 'Test form'.
 
+	table := PaginatedTablePresenter new.
+	table
+		columns: {
+				('Name' -> #name).
+				('Email' -> #email).
+				('Role' -> #role) };
+		items: {
+				(Dictionary new
+					 at: #name put: 'Alice';
+					 at: #email put: 'alice@example.com';
+					 at: #role put: 'Admin';
+					 yourself).
+
+				(Dictionary new
+					 at: #name put: 'Bob';
+					 at: #email put: 'bob@example.com';
+					 at: #role put: 'User';
+					 yourself).
+
+				(Dictionary new
+					 at: #name put: 'Charlie';
+					 at: #email put: 'charlie@example.com';
+					 at: #role put: 'Moderator';
+					 yourself) };
+		itemsPerPage: 2.
+
+	textArea := PresenterDecorator wrap: SpTextPresenter.
+	textArea beNotWrapWord.
+	textArea text:
+		'I am text area! I am text area! I am text area! I am text area! I am text area! I am text area!'.
+
+
 	submitButton := ButtonPresenter new.
 	submitButton label: 'Submit'.
 
@@ -51,7 +86,7 @@ DdTestPresenter >> initializePresenters [
 	nameInput placeholder: 'Enter your name'.
 
 	combobox := ComboBoxPresenter new.
-	combobox selectIndex: 3.
+	combobox selectIndex: 0.
 	combobox items: #( 'Apple' 'Banana' 'Cherry' 'Orange' ).
 
 	date := PresenterDecorator wrap: SpDatePresenter.
@@ -66,19 +101,19 @@ DdTestPresenter >> initializePresenters [
 	genderGroup showFrame: false.
 	genderGroup showTitle: true.
 	genderGroup title: 'Gender'.
-	genderGroup items: #( 'male' 'female' 'other' ).
-	genderGroup сolumnCount: 1.
+	genderGroup items: #('male' 'female' 'other').
+	genderGroup сolumnCount: 3.
+
+	list := ListPresenter new.
+	list items: #( '1' '2' '3' '4' '5' '6' ).
 
 	hobyGroup := CheckboxGroupPresenter new.
-	hobyGroup items: #('Cooking' 'Traveling' 'Reading' 'Programming').
+	hobyGroup items:
+		#( 'Cooking' 'Traveling' 'Reading' 'Programming' 'Painting' ).
 	hobyGroup showFrame: false.
 	hobyGroup showTitle: true.
-	hobyGroup сolumnCount: 2.
+	hobyGroup сolumnCount: 3.
 	hobyGroup title: 'Hobby'.
-	hobyGroup
-		items: #( 'Cooking' 'Traveling' 'Reading' 'Programming' );
-		сolumnCount: 2;
-		title: 'Hobby'.
 	prioritySlider := PresenterDecorator wrap: SpSliderPresenter.
 	prioritySlider quantum: 3.
 	prioritySlider label: 'Slider'.

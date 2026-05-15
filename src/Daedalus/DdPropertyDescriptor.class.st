@@ -13,7 +13,6 @@ DdPropertyDescriptor class >> forPresenter: aPresenter [
 	mainP := (aPresenter respondsTo: #mainPresenter)
 		         ifTrue: [ aPresenter mainPresenter ]
 		         ifFalse: [ aPresenter ].
-
 	(mainP isKindOf: SpLabelPresenter) ifTrue: [
 		^ DdLabelPropertyDescriptor new ].
 	(mainP isKindOf: SpButtonPresenter) ifTrue: [
@@ -28,6 +27,10 @@ DdPropertyDescriptor class >> forPresenter: aPresenter [
 		^ DdSliderPropertyDescriptor new ].
 	(mainP isKindOf: SpDatePresenter) ifTrue: [
 		^ DdDatePickerPropertyDescriptor new ].
+	(mainP isKindOf: SpListPresenter) ifTrue: [
+		^ DdListPropertyDescriptor new ].
+	(mainP isKindOf: SpTextPresenter) ifTrue: [
+		^ DdTextAreaPropertyDescriptor new ].
 	aPresenter class name = 'RadioGroupPresenter' ifTrue: [
 		^ DdRadioGroupPropertyDescriptor new ].
 	aPresenter class name = 'CheckboxGroupPresenter' ifTrue: [
@@ -36,6 +39,8 @@ DdPropertyDescriptor class >> forPresenter: aPresenter [
 		^ DdComboboxPropertyDescriptor new ].
 	aPresenter class name = 'TimePickerPresenter' ifTrue: [
 		^ DdTimePickerPropertyDescriptor new ].
+	aPresenter class name = 'PaginatedTablePresenter' ifTrue: [
+		^ DdTablePropertyDescriptor new ].
 
 	^ nil
 ]

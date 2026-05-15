@@ -34,16 +34,29 @@ DdCanvasPresenter >> clickedMorphFromEvent: arg1 [
 
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> ddOnMouseDown: anEvent [ 
-    | clickedMorph result |
-    clickedMorph := self clickedMorphFromEvent: anEvent.
-    clickedMorph ifNil: [ ^ self ].
-    result := self presenterFromClickedMorph: clickedMorph.
-    result ifNil: [ ^ self ].
-    selectedPresenter := result key.
-    selectedSubPresenter := result value.
-    designer ifNotNil: [ designer onSelectionChanged ].
-    (anEvent respondsTo: #wasHandled:) ifTrue: [
-        anEvent wasHandled: true ]
+
+	| clickedMorph result t1 t2 t3 t4 |
+	
+	t1 := Time millisecondClockValue.
+	clickedMorph := self clickedMorphFromEvent: anEvent.
+	t2 := Time millisecondClockValue.
+	Transcript show: 'clickedMorphFromEvent: ' , (t2 - t1) printString , 'ms'; cr.
+	
+	clickedMorph ifNil: [ ^ self ].
+	
+	result := self presenterFromClickedMorph: clickedMorph.
+	t3 := Time millisecondClockValue.
+	Transcript show: 'presenterFromClickedMorph: ' , (t3 - t2) printString , 'ms'; cr.
+	
+	result ifNil: [ ^ self ].
+	selectedPresenter := result key.
+	selectedSubPresenter := result value.
+	designer ifNotNil: [ designer onSelectionChanged ].
+	t4 := Time millisecondClockValue.
+	Transcript show: 'onSelectionChanged: ' , (t4 - t3) printString , 'ms'; cr.
+	
+	(anEvent respondsTo: #wasHandled:) ifTrue: [
+		anEvent wasHandled: true ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -120,39 +133,41 @@ DdCanvasPresenter >> instVarNameForPresenterInRoot: aPresenter [
 { #category : 'accessing' }
 DdCanvasPresenter >> installClickHooks [
 
-	| tmp1 tmp3 |
-	tmp1 := rootPreviewPresenter adapter widget.
-	tmp3 := 0.
+	| root |
+	root := rootPreviewPresenter adapter widget.
+	root ifNil: [ ^ self ].
 
-	tmp1 allMorphsDo: [ :m |
-			(m respondsTo: #removeActionsForEvent:) ifTrue: [
-				m removeActionsForEvent: #mouseDown ] ].
+	"Знімаємо старі обробники"
+	root allMorphsDo: [ :m |
+		(m respondsTo: #removeActionsForEvent:) ifTrue: [
+			m removeActionsForEvent: #mouseDown ] ].
 
-	tmp1 allMorphsDo: [ :arg1 |
-			(arg1 respondsTo: #on:send:to:) ifTrue: [
-					arg1 on: #mouseDown send: #ddOnMouseDown: to: self.
-					tmp3 := tmp3 + 1 ] ].
+	presenterIndex presenters do: [ :p |
+		(p adapter notNil and: [ p adapter widget notNil ]) ifTrue: [
+			| w |
+			w := p adapter widget.
+			(w respondsTo: #on:send:to:) ifTrue: [
+				w on: #mouseDown send: #ddOnMouseDown: to: self ] ] ].
 ]
 
 { #category : 'accessing' }
 DdCanvasPresenter >> presenterFromClickedMorph: aMorph [ 
-    | m adapter spPresenter current |
-    m := aMorph.
-    [ m notNil ] whileTrue: [
-        (m respondsTo: #model) ifTrue: [
-            adapter := m model.
-            (adapter respondsTo: #owner) ifTrue: [
-                spPresenter := adapter owner.
-                spPresenter ifNotNil: [
-                    current := spPresenter owner.
-                    [ current isKindOf: SpPresenter ] whileTrue: [
-                        (presenterIndex presenters includes: current) ifTrue: [
-                            (current class name beginsWith: 'Sp') ifFalse: [
-                                ^ Association key: current value: spPresenter ] ].
-                        current ifNil: [ ^ nil ].
-                        current := current owner ] ] ] ].
-        m := m owner ].
-    ^ nil
+
+	| m |
+	m := aMorph.
+	[ m notNil ] whileTrue: [
+		presenterIndex presenters do: [ :p |
+			(p adapter notNil and: [ p adapter widget == m ]) ifTrue: [
+				| current |
+				current := p owner.
+				[ current isKindOf: SpPresenter ] whileTrue: [
+					(presenterIndex presenters includes: current) ifTrue: [
+						(current class name beginsWith: 'Sp') ifFalse: [
+							^ Association key: current value: p ] ].
+					current ifNil: [ ^ nil ].
+					current := current owner ] ] ].
+		m := m owner ].
+	^ nil
 ]
 
 { #category : 'accessing' }
@@ -177,7 +192,11 @@ DdCanvasPresenter >> rebuildPreview [
 	self needRebuild: true.
 
 	self updatePresenter.
-	UIManager default defer: [ self installClickHooks ]
+	UIManager default defer: [
+		UIManager default defer: [  
+			presenterIndex := DdPresenterIndex new
+				buildFromRootPresenter: rootPreviewPresenter.
+			self installClickHooks ] ]
 ]
 
 { #category : 'accessing' }

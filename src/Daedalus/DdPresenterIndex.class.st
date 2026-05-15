@@ -11,11 +11,13 @@ Class {
 }
 
 { #category : 'as yet unclassified' }
-DdPresenterIndex >> buildFromRootPresenter: aPresenter [
-
+DdPresenterIndex >> buildFromRootPresenter: aPresenter [ 
 	self initialize.
-	presenters := aPresenter allPresenters asOrderedCollection. presenters
-		              do: [ :p | self indexPresenter: p ].
+	presenters := aPresenter allPresenters asOrderedCollection.
+	
+	presenters do: [ :p |
+		(p adapter notNil and: [ p adapter widget notNil ]) ifTrue: [
+			widgetToPresenter at: p adapter widget put: p ] ].
 	^ self
 ]
 
@@ -44,12 +46,13 @@ DdPresenterIndex >> initialize [
 
 { #category : 'as yet unclassified' }
 DdPresenterIndex >> presenterAtClickedMorph: aMorph [ 
-  | m |
-  m := aMorph.
-  [ m notNil ] whileTrue: [
-    (widgetToPresenter includesKey: m) ifTrue: [ ^ widgetToPresenter at: m ].
-    m := m owner ].
-  ^ nil
+	| m |
+	m := aMorph.
+	[ m notNil ] whileTrue: [
+		(widgetToPresenter includesKey: m) ifTrue: [
+			^ widgetToPresenter at: m ].
+		m := m owner ].
+	^ nil
 ]
 
 { #category : 'as yet unclassified' }
