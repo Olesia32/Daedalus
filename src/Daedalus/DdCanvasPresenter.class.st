@@ -33,28 +33,17 @@ DdCanvasPresenter >> clickedMorphFromEvent: arg1 [
 ]
 
 { #category : 'as yet unclassified' }
-DdCanvasPresenter >> ddOnMouseDown: anEvent [ 
+DdCanvasPresenter >> ddOnMouseDown: anEvent [
 
-	| clickedMorph result t1 t2 t3 t4 |
-	
-	t1 := Time millisecondClockValue.
+	| clickedMorph result |
 	clickedMorph := self clickedMorphFromEvent: anEvent.
-	t2 := Time millisecondClockValue.
-	Transcript show: 'clickedMorphFromEvent: ' , (t2 - t1) printString , 'ms'; cr.
-	
 	clickedMorph ifNil: [ ^ self ].
-	
+
 	result := self presenterFromClickedMorph: clickedMorph.
-	t3 := Time millisecondClockValue.
-	Transcript show: 'presenterFromClickedMorph: ' , (t3 - t2) printString , 'ms'; cr.
-	
 	result ifNil: [ ^ self ].
 	selectedPresenter := result key.
 	selectedSubPresenter := result value.
 	designer ifNotNil: [ designer onSelectionChanged ].
-	t4 := Time millisecondClockValue.
-	Transcript show: 'onSelectionChanged: ' , (t4 - t3) printString , 'ms'; cr.
-	
 	(anEvent respondsTo: #wasHandled:) ifTrue: [
 		anEvent wasHandled: true ]
 ]
@@ -151,22 +140,23 @@ DdCanvasPresenter >> installClickHooks [
 ]
 
 { #category : 'accessing' }
-DdCanvasPresenter >> presenterFromClickedMorph: aMorph [ 
+DdCanvasPresenter >> presenterFromClickedMorph: aMorph [
 
-	| m |
+	| m list|
+	list := presenterIndex presenters.
 	m := aMorph.
 	[ m notNil ] whileTrue: [
-		presenterIndex presenters do: [ :p |
-			(p adapter notNil and: [ p adapter widget == m ]) ifTrue: [
-				| current |
-				current := p owner.
-				[ current isKindOf: SpPresenter ] whileTrue: [
-					(presenterIndex presenters includes: current) ifTrue: [
-						(current class name beginsWith: 'Sp') ifFalse: [
-							^ Association key: current value: p ] ].
-					current ifNil: [ ^ nil ].
-					current := current owner ] ] ].
-		m := m owner ].
+			presenterIndex presenters do: [ :p |
+					(p adapter notNil and: [ p adapter widget == m ]) ifTrue: [
+							| current |
+							current := p owner.
+							[ current isKindOf: SpPresenter ] whileTrue: [
+									(presenterIndex presenters includes: current) ifTrue: [
+											(current class name beginsWith: 'Sp') ifFalse: [
+												^ Association key: current value: p ] ].
+									current ifNil: [ ^ nil ].
+									current := current owner ] ] ].
+			m := m owner ].
 	^ nil
 ]
 
@@ -200,27 +190,42 @@ DdCanvasPresenter >> rebuildPreview [
 ]
 
 { #category : 'accessing' }
-DdCanvasPresenter >> refreshPreview [ 
-    | varName |
-    varName := selectedSubPresenter ifNotNil: [ 
-        self instVarNameForPresenterInRoot: selectedSubPresenter ].
-    
-    SpNullApplication skipReset: true.
+DdCanvasPresenter >> refreshPreview [
+
+	| subVarName presenterVarName |
+	subVarName := selectedSubPresenter ifNotNil: [
+		              self instVarNameForPresenterInRoot:
+			              selectedSubPresenter ].
+	presenterVarName := selectedPresenter ifNotNil: [
+		                    self instVarNameForPresenterInRoot:
+			                    selectedPresenter ].
+
+	 SpNullApplication skipReset: true.
     [
         rootPreviewPresenter initializePresenters.
         rootPreviewPresenter layout: rootPreviewPresenter defaultLayout.
     ] ensure: [ SpNullApplication skipReset: false ].
-    
-    presenterIndex := DdPresenterIndex new buildFromRootPresenter: rootPreviewPresenter.
-    varName ifNotNil: [
-        | idx |
-        idx := rootPreviewPresenter class allInstVarNames indexOf: varName.
-        idx > 0 ifTrue: [
-            selectedSubPresenter := rootPreviewPresenter instVarAt: idx ] ].
-    
-    UIManager default defer: [
-        self installClickHooks.
-        designer ifNotNil: [ designer onSelectionChanged ] ]
+
+	presenterIndex := DdPresenterIndex new buildFromRootPresenter:
+		                  rootPreviewPresenter.
+
+	presenterVarName ifNotNil: [
+			| idx |
+			idx := rootPreviewPresenter class allInstVarNames indexOf:
+				       presenterVarName.
+			idx > 0 ifTrue: [
+				selectedPresenter := rootPreviewPresenter instVarAt: idx ] ].
+
+	subVarName ifNotNil: [
+			| idx |
+			idx := rootPreviewPresenter class allInstVarNames indexOf:
+				       subVarName.
+			idx > 0 ifTrue: [
+				selectedSubPresenter := rootPreviewPresenter instVarAt: idx ] ].
+
+	UIManager default defer: [
+			self installClickHooks.
+			designer ifNotNil: [ designer onSelectionChanged ] ]
 ]
 
 { #category : 'accessing' }

@@ -9,11 +9,10 @@ Class {
 { #category : 'running' }
 DaedalusApplication class >> runOn: aPresenterClass [
 
-	| app designer |
-	app := self new.
-	app initialize.
+	| designer |
 	designer := DdDesignerPresenter onPresenter: aPresenterClass.
-	(self new: designer) open.
+	designer open.
+   designer withWindowDo: [ :w | w title: 'Daedalus — ' , aPresenterClass name ].
 	Processor yield.
 	(designer instVarNamed: #workArea) installClickHooks
 ]

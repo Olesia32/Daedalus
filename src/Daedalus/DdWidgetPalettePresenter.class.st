@@ -4,7 +4,8 @@ Class {
 	#instVars : [
 		'list',
 		'filteredInput',
-		'model'
+		'model',
+		'designer'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -14,37 +15,44 @@ Class {
 { #category : 'as yet unclassified' }
 DdWidgetPalettePresenter >> connectFilter [
 
-    filteredInput whenTextChangedDo: [ :text |
-        list items: (model select: [ :each |
-            each label asLowercase includesSubstring: text asLowercase ]) ].
+	filteredInput whenTextChangedDo: [ :arg1 |
+			list items: (model select: [ :arg2 |
+					 arg2 label asLowercase includesSubstring: arg1 asLowercase ]) ]
 ]
 
 { #category : 'layout' }
 DdWidgetPalettePresenter >> defaultLayout [
 
-	| tmp2 tmp4 |
-	tmp2 := SpBoxLayout newLeftToRight.
-	tmp4 := SpBoxLayout newTopToBottom.
-	tmp4
+	| tmp1 tmp2 |
+	tmp1 := SpBoxLayout newLeftToRight.
+	tmp2 := SpBoxLayout newTopToBottom.
+	tmp2
 		add: 'Standart Widgetes' expand: false;
 		add: filteredInput expand: false.
-	tmp2 add: (tmp4 add: list).
-	^ tmp2 yourself
+	tmp1 add: (tmp2 add: list).
+	^ tmp1 yourself
 ]
 
-{ #category : 'initialization' }
-DdWidgetPalettePresenter >> initializePresenters [
+{ #category : 'accessing' }
+DdWidgetPalettePresenter >> designer: aDesigner [ 
+    designer := aDesigner
+]
 
-	model := DdWidgetRegistry all.
-	list := SpListPresenter new.
-	list
-		items: model;
-		display: [ :item | item label ];
-		sortingBlock: [ :a :b | a label < b label ];
-		dragEnabled: true.
-	filteredInput := TextInputPresenter new
-		                 isValidationField: false;
-		                 height: 25;
-		                 placeholder: 'Choose widget...'.
-	self connectFilter
+{ #category : 'accessing' }
+DdWidgetPalettePresenter >> initializePresenters [ 
+    model := DdWidgetRegistry all.
+    list := SpListPresenter new.
+    list
+        items: model;
+        display: [ :item | item label ];
+        sortingBlock: [ :a :b | a label < b label ];
+        dragEnabled: true;
+        whenActivatedDo: [ :selection |
+            selection selectedItem ifNotNil: [ :descriptor |
+                designer ifNotNil: [ designer addWidget: descriptor ] ] ].
+    filteredInput := TextInputPresenter new
+        isValidationField: false;
+        height: 25;
+        placeholder: 'Choose widget...'.
+    self connectFilter
 ]

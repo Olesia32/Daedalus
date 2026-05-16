@@ -13,51 +13,57 @@ Class {
 }
 
 { #category : 'adding' }
-DdItemsPropertyDescriptor >> addItemsFieldsTo: aPanel for: aPresenter [ 
+DdItemsPropertyDescriptor >> addItemsFieldsTo: aPanel for: aPresenter [
 
-    itemsList := SpListPresenter new.
-    itemsList display: [ :each | each asString ].
-    [ itemsList items: aPresenter items asOrderedCollection ]
-        on: Error do: [ itemsList items: #() ].
+	itemsList := SpListPresenter new.
+itemsList
+    display: self itemDisplayBlock;
+    items: ([ aPresenter items asOrderedCollection ]
+        on: Error do: [ OrderedCollection new ]).
 
-    addItemInput := SpTextInputFieldPresenter new.
+	addItemInput := SpTextInputFieldPresenter new.
 
-    addItemButton := SpButtonPresenter new.
-    addItemButton
-        label: 'Add';
-        action: [
-            | text currentItems |
-            text := addItemInput text.
-            text ifNotEmpty: [
-                currentItems := itemsList items asOrderedCollection.
-                currentItems add: text.
-                [ aPresenter items: currentItems asArray ] on: Error do: [ ].
-                itemsList items: currentItems.
-                addItemInput text: ''.
-                self onItemsChanged: currentItems asArray ] ].
+	addItemButton := SpButtonPresenter new.
+	addItemButton
+		label: 'Add';
+		action: [
+				| text currentItems |
+				text := addItemInput text.
+				text ifNotEmpty: [
+							currentItems := itemsList items asOrderedCollection.
+							currentItems add: text.
+							[ aPresenter items: currentItems asArray ]
+								on: Error
+								do: [ ].
+							itemsList items: currentItems.
+							addItemInput text: ''.
+							self onItemsChanged: currentItems asArray ] ].
 
-    removeItemButton := SpButtonPresenter new.
-    removeItemButton
-        label: 'Remove';
-        action: [
-            | sel currentItems |
-            sel := itemsList selectedItem.
-            sel ifNotNil: [
-                currentItems := itemsList items asOrderedCollection.
-                currentItems remove: sel ifAbsent: [ ].
-                [ aPresenter items: currentItems asArray ] on: Error do: [ ].
-                itemsList items: currentItems.
-                self onItemsChanged: currentItems asArray ] ].
+	removeItemButton := SpButtonPresenter new.
+	removeItemButton
+		label: 'Remove';
+		action: [
+				| sel currentItems |
+				sel := itemsList selectedItem.
+				sel ifNotNil: [
+							currentItems := itemsList items asOrderedCollection.
+							currentItems remove: sel ifAbsent: [ ].
+							[ aPresenter items: currentItems asArray ]
+								on: Error
+								do: [ ].
+							itemsList items: currentItems.
+							self onItemsChanged: currentItems asArray ] ].
 
-    aPanel
-        add: (self rowFor: 'Items' input: itemsList)
-            withConstraints: [ :c | c height: 80 ];
-        add: (self rowFor: 'New item' input: addItemInput) expand: false;
-        add: (SpBoxLayout newLeftToRight
-                spacing: 4;
-                add: addItemButton;
-                add: removeItemButton;
-                yourself) expand: false.
+	aPanel
+		add: (self rowFor: 'Items' input: itemsList)
+		withConstraints: [ :c | c height: 80 ];
+		add: (self rowFor: 'New item' input: addItemInput) expand: false;
+		add: (SpBoxLayout newLeftToRight
+				 spacing: 4;
+				 add: addItemButton;
+				 add: removeItemButton;
+				 yourself)
+		expand: false
 ]
 
 { #category : 'as yet unclassified' }
@@ -69,6 +75,11 @@ DdItemsPropertyDescriptor >> collectItemsPropertiesWith: varName into: result [
             selector: 'items:';
             value: items asArray;
             yourself) ].
+]
+
+{ #category : 'as yet unclassified' }
+DdItemsPropertyDescriptor >> itemDisplayBlock [ 
+    ^ [ :item | item printString ]
 ]
 
 { #category : 'as yet unclassified' }

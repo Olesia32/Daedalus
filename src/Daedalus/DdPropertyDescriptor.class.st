@@ -31,6 +31,8 @@ DdPropertyDescriptor class >> forPresenter: aPresenter [
 		^ DdListPropertyDescriptor new ].
 	(mainP isKindOf: SpTextPresenter) ifTrue: [
 		^ DdTextAreaPropertyDescriptor new ].
+	(mainP isKindOf: SpTablePresenter) ifTrue: [
+		^ DdTablePropertyDescriptor new ].
 	aPresenter class name = 'RadioGroupPresenter' ifTrue: [
 		^ DdRadioGroupPropertyDescriptor new ].
 	aPresenter class name = 'CheckboxGroupPresenter' ifTrue: [

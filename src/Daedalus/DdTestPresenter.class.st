@@ -4,18 +4,20 @@ Class {
 	#instVars : [
 		'titleLabel',
 		'table',
-		'list',
 		'textArea',
 		'submitButton',
-		'nameInput',
-		'agreeCheckbox',
 		'genderGroup',
-		'hobyGroup',
 		'prioritySlider',
 		'progressBar',
 		'combobox',
 		'date',
-		'time'
+		'time',
+		'newButton',
+		'listPresenter',
+		'hobbyGroup',
+		'nameInputPresenter',
+		'label1',
+		'agreeCheckBox'
 	],
 	#category : 'Daedalus-Daedalus-Services',
 	#package : 'Daedalus',
@@ -28,49 +30,40 @@ DdTestPresenter >> defaultLayout [
 	^ SpBoxLayout new
 		  spacing: 10;
 		  add: titleLabel expand: false;
-		  add: nameInput expand: true;
+		  add: nameInputPresenter expand: true;
 		  add: combobox expand: false;
-		  add: agreeCheckbox expand: false;
+		  add: agreeCheckBox expand: false;
 		  add: genderGroup expand: false;
-		  add: hobyGroup expand: false;
-		  add: textArea expand: true;
+		  add: hobbyGroup expand: false;
+		  add: table expand: true;
 		  add: submitButton expand: false;
+		  add: newButton;
 		  yourself
 ]
 
 { #category : 'initialization' }
 DdTestPresenter >> initializePresenters [
-
+   |items|
 	super initializePresenters.
+	label1 := PresenterDecorator wrap: SpLabelPresenter.
+	label1 label: 'Label'.
+	newButton := PresenterDecorator wrap: SpButtonPresenter.
+	newButton label: 'New button'.
 
 	titleLabel := LabelPresenter new.
 	titleLabel label: 'Test form'.
 
-	table := PaginatedTablePresenter new.
-	table
-		columns: {
-				('Name' -> #name).
-				('Email' -> #email).
-				('Role' -> #role) };
-		items: {
-				(Dictionary new
-					 at: #name put: 'Alice';
-					 at: #email put: 'alice@example.com';
-					 at: #role put: 'Admin';
-					 yourself).
+	table := SpTablePresenter new.
+items := OrderedCollection new.
+items add: (Dictionary new at: #name put: 'Alice'; at: #age put: 25; at: #city put: 'Lviv'; yourself).
+items add: (Dictionary new at: #name put: 'Bob'; at: #age put: 30; at: #city put: 'Kyiv'; yourself).
+items add: (Dictionary new at: #name put: 'Charlie'; at: #age put: 22; at: #city put: 'Odesa'; yourself).
 
-				(Dictionary new
-					 at: #name put: 'Bob';
-					 at: #email put: 'bob@example.com';
-					 at: #role put: 'User';
-					 yourself).
-
-				(Dictionary new
-					 at: #name put: 'Charlie';
-					 at: #email put: 'charlie@example.com';
-					 at: #role put: 'Moderator';
-					 yourself) };
-		itemsPerPage: 2.
+table
+    addColumn: (SpStringTableColumn title: 'Name' evaluated: [ :p | p at: #name ]);
+    addColumn: (SpStringTableColumn title: 'Age' evaluated: [ :p | (p at: #age) printString ]);
+    addColumn: (SpStringTableColumn title: 'City' evaluated: [ :p | p at: #city ]);
+    items: items.
 
 	textArea := PresenterDecorator wrap: SpTextPresenter.
 	textArea beNotWrapWord.
@@ -81,9 +74,9 @@ DdTestPresenter >> initializePresenters [
 	submitButton := ButtonPresenter new.
 	submitButton label: 'Submit'.
 
-	nameInput := TextInputPresenter new.
-	nameInput text: 'Olesiа'.
-	nameInput placeholder: 'Enter your name'.
+	nameInputPresenter := TextInputPresenter new.
+	nameInputPresenter text: 'Olesiа'.
+	nameInputPresenter placeholder: 'Enter your name'.
 
 	combobox := ComboBoxPresenter new.
 	combobox selectIndex: 0.
@@ -92,28 +85,28 @@ DdTestPresenter >> initializePresenters [
 	date := PresenterDecorator wrap: SpDatePresenter.
 	date date: '20 June 2026'.
 
-	agreeCheckbox := CheckboxPresenter new.
-	agreeCheckbox state: false.
-	agreeCheckbox label: 'I agree'.
+	agreeCheckBox := CheckboxPresenter new.
+	agreeCheckBox state: true.
+	agreeCheckBox label: 'I agree'.
 
 	genderGroup := RadioGroupPresenter new.
 	genderGroup itemSelected: 1.
 	genderGroup showFrame: false.
-	genderGroup showTitle: true.
+	genderGroup showTitle: false.
 	genderGroup title: 'Gender'.
-	genderGroup items: #('male' 'female' 'other').
+	genderGroup items: #( 'male' 'female' 'other' ).
 	genderGroup сolumnCount: 3.
 
-	list := ListPresenter new.
-	list items: #( '1' '2' '3' '4' '5' '6' ).
+	listPresenter := ListPresenter new.
+	listPresenter items: #( '1' '2' '3' '4' '5' '6' ).
 
-	hobyGroup := CheckboxGroupPresenter new.
-	hobyGroup items:
+	hobbyGroup := CheckboxGroupPresenter new.
+	hobbyGroup items:
 		#( 'Cooking' 'Traveling' 'Reading' 'Programming' 'Painting' ).
-	hobyGroup showFrame: false.
-	hobyGroup showTitle: true.
-	hobyGroup сolumnCount: 3.
-	hobyGroup title: 'Hobby'.
+	hobbyGroup showFrame: false.
+	hobbyGroup showTitle: true.
+	hobbyGroup сolumnCount: 3.
+	hobbyGroup title: 'Hobby'.
 	prioritySlider := PresenterDecorator wrap: SpSliderPresenter.
 	prioritySlider quantum: 3.
 	prioritySlider label: 'Slider'.
@@ -124,7 +117,5 @@ DdTestPresenter >> initializePresenters [
 	time := TimePickerPresenter new.
 
 	progressBar := PresenterDecorator wrap: SpProgressBarPresenter.
-	titleLabel fontSize: 12.
-	agreeCheckbox fontSize: 12.
-	agreeCheckbox color: '#green'
+	agreeCheckBox color: '#green'
 ]

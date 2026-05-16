@@ -24,16 +24,14 @@ DdPresenterIndex >> buildFromRootPresenter: aPresenter [
 { #category : 'accessing' }
 DdPresenterIndex >> indexPresenter: aPresenter [
 
-    | w |
-    w := self widgetOf: aPresenter.
-    w ifNil: [ ^ self ].
+	| w |
+	w := self widgetOf: aPresenter.
+	w ifNil: [ ^ self ].
 
-    widgetToPresenter at: w put: aPresenter.
+	widgetToPresenter at: w put: aPresenter.
 
-    "🔥 ОЦЕ ГОЛОВНЕ — прокидаємо presenter в morph"
-    (w respondsTo: #setProperty:toValue:) ifTrue: [
-        w setProperty: #ddPresenter toValue: aPresenter
-    ].
+	(w respondsTo: #setProperty:toValue:) ifTrue: [
+		w setProperty: #ddPresenter toValue: aPresenter ]
 ]
 
 { #category : 'initialization' }

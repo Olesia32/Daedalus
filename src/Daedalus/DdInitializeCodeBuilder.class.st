@@ -38,42 +38,42 @@ DdInitializeCodeBuilder >> generateFresh [
 ]
 
 { #category : 'translating' }
-DdInitializeCodeBuilder >> patchSource: source [ 
-    | ast props targetVarName newValue assignNode |
+DdInitializeCodeBuilder >> patchSource: source [
 
-    props := propertiesList first.
-    targetVarName := props varName.
-    newValue := props label.
+	| ast props targetVarName newValue assignNode |
+	props := propertiesList first.
+	targetVarName := props varName.
+	newValue := props label.
 
-    ast := RBParser parseMethod: source.
+	ast := RBParser parseMethod: source.
 
-    assignNode := ast body statements 
-        detect: [ :stmt |
-            stmt isMessage
-                and: [ stmt receiver isVariable
-                and: [ stmt receiver name = targetVarName
-                and: [ stmt selector = #label: ] ] ] ]
-        ifNone: [ nil ].
+	assignNode := ast body statements
+		              detect: [ :stmt |
+				              stmt isMessage and: [
+						              stmt receiver isVariable and: [
+							              stmt receiver name = targetVarName and: [
+								              stmt selector = #label: ] ] ] ]
+		              ifNone: [ nil ].
 
-    assignNode 
-        ifNotNil: [
-            assignNode arguments first replaceWith: 
-                (RBLiteralValueNode value: newValue) ]
-        ifNil: [
-            | initNode newNode |
-            initNode := ast body statements
-                detect: [ :stmt |
-                    stmt isAssignment
-                        and: [ stmt variable name = targetVarName ] ]
-                ifNone: [ nil ].
+	assignNode
+		ifNotNil: [
+				assignNode arguments first replaceWith:
+					(OCLiteralValueNode value: newValue) ]
+		ifNil: [
+				| initNode newNode |
+				initNode := ast body statements
+					            detect: [ :stmt |
+						            stmt isAssignment and: [
+							            stmt variable name = targetVarName ] ]
+					            ifNone: [ nil ].
 
-            initNode ifNil: [ ^ ast formattedCode ].
+				initNode ifNil: [ ^ ast formattedCode ].
 
-            newNode := RBParser parseExpression: 
-                targetVarName , ' label: ' , newValue printString.
-            ast body addNode: newNode after: initNode ].
+				newNode := RBParser parseExpression:
+					           targetVarName , ' label: ' , newValue printString.
+				ast body addNode: newNode after: initNode ].
 
-    ^ ast formattedCode
+	^ ast formattedCode
 ]
 
 { #category : 'as yet unclassified' }

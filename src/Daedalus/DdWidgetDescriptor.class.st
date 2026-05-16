@@ -19,6 +19,12 @@ DdWidgetDescriptor >> icon [
 ]
 
 { #category : 'accessing' }
+DdWidgetDescriptor >> initExpression [
+
+	^ 'PresenterDecorator wrap: ' , presenterClass name
+]
+
+{ #category : 'accessing' }
 DdWidgetDescriptor >> label [
 
 	^ label
@@ -29,16 +35,7 @@ DdWidgetDescriptor >> label: arg1 icon: arg2 presenter: arg3 [
 
 	label := arg1.
 	icon := arg2.
-	presenterClass := arg3
-]
-
-{ #category : 'as yet unclassified' }
-DdWidgetDescriptor >> label: aString icon: anIcon presenter: aClass descriptor: aDescriptor [ 
-    label := aString.
-    icon := anIcon.
-    presenterClass := aClass.
-    propertyDescriptor := aDescriptor.
-    ^ self
+	presenterClass := arg3.
 ]
 
 { #category : 'accessing' }
@@ -54,7 +51,7 @@ DdWidgetDescriptor >> propertyDescriptor [
 ]
 
 { #category : 'accessing' }
-DdWidgetDescriptor >> propertyDescriptor: anObject [
+DdWidgetDescriptor >> propertyDescriptor: arg1 [
 
-	propertyDescriptor := anObject
+	propertyDescriptor := arg1
 ]

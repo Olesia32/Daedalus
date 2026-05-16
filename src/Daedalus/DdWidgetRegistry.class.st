@@ -18,8 +18,7 @@ DdWidgetRegistry class >> all [
 		  (DdWidgetDescriptor new
 			   label: 'Label'
 			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: LabelPresenter
-			   descriptor: DdLabelPropertyDescriptor new).
+			   presenter: SpLabelPresenter).
 
 		  (DdWidgetDescriptor new
 			   label: 'Text Input'
@@ -29,12 +28,12 @@ DdWidgetRegistry class >> all [
 		  (DdWidgetDescriptor new
 			   label: 'Text Area'
 			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: (PresenterDecorator wrap: SpTextPresenter)).
+			   presenter: SpTextPresenter).
 
 		  (DdWidgetDescriptor new
 			   label: 'List'
 			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: ListPresenter).
+			   presenter: SpListPresenter).
 
 		  (DdWidgetDescriptor new
 			   label: 'Combobox'
@@ -44,7 +43,7 @@ DdWidgetRegistry class >> all [
 		  (DdWidgetDescriptor new
 			   label: 'Checkbox'
 			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: (PresenterDecorator wrap: SpCheckBoxPresenter)).
+			   presenter: SpCheckBoxPresenter).
 
 		  (DdWidgetDescriptor new
 			   label: 'Group of radiobuttons'
@@ -59,17 +58,17 @@ DdWidgetRegistry class >> all [
 		  (DdWidgetDescriptor new
 			   label: 'Progress bar'
 			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: (PresenterDecorator wrap: SpProgressBarPresenter)).
+			   presenter: SpProgressBarPresenter).
 
 		  (DdWidgetDescriptor new
 			   label: 'Slider'
 			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: (PresenterDecorator wrap: SpSliderPresenter)).
+			   presenter: SpSliderPresenter).
 
 		  (DdWidgetDescriptor new
 			   label: 'Date picker'
 			   icon: (Smalltalk ui icons iconNamed: #calendar)
-			   presenter: (PresenterDecorator wrap: SpDatePresenter)).
+			   presenter: SpDatePresenter).
 
 		  (DdWidgetDescriptor new
 			   label: 'Time picker'
@@ -84,10 +83,5 @@ DdWidgetRegistry class >> all [
 		  (DdWidgetDescriptor new
 			   label: 'Tree'
 			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: (PresenterDecorator wrap: SpTreePresenter)).
-
-		  (DdWidgetDescriptor new
-			   label: 'Notebook'
-			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: (PresenterDecorator wrap: SpNotebookPresenter)) }
+			   presenter: SpTreePresenter) }
 ]
