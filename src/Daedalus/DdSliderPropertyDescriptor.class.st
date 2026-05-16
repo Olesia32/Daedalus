@@ -1,3 +1,19 @@
+"
+I am the property descriptor for slider widgets. I extend the common style fields with inputs for label, min, max, value, and quantum.
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor`
+`DdBasePresenterPropertyDescriptor`
+`DdSliderPropertyDescriptor` (this is me)
+
+### Instance Variables
+- _labelInput_: `SpTextInputFieldPresenter` — edits the slider label
+- _minInput_: `SpTextInputFieldPresenter` — edits the minimum value
+- _maxInput_: `SpTextInputFieldPresenter` — edits the maximum value
+- _valueInput_: `SpTextInputFieldPresenter` — edits the current value
+- _quantumInput_: `SpTextInputFieldPresenter` — edits the step size
+"
 Class {
 	#name : 'DdSliderPropertyDescriptor',
 	#superclass : 'DdBasePresenterPropertyDescriptor',

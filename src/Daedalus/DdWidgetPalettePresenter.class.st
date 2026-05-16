@@ -1,3 +1,17 @@
+"
+I am the widget palette shown on the left side of the designer. I display the full list of available widgets, support filtering
+by name, and notify the designer when the user activates a widget to add it to the canvas.
+
+### Hierarchy
+`SpPresenter`
+`DdWidgetPalettePresenter` (this is me)
+
+### Instance Variables
+- _list_: `SpListPresenter` — displays the filtered widget descriptors
+- _filteredInput_: `SpTextInputFieldPresenter` — the search/filter field
+- _model_: `Array` — the full unfiltered list of `DdWidgetDescriptor` instances
+- _designer_: `DdDesignerPresenter` — notified when a widget is activated
+"
 Class {
 	#name : 'DdWidgetPalettePresenter',
 	#superclass : 'SpPresenter',
@@ -14,6 +28,8 @@ Class {
 
 { #category : 'as yet unclassified' }
 DdWidgetPalettePresenter >> connectFilter [
+"Wires the filter input so that typing narrows the list to descriptors whose label contains the typed substring
+case-insensitively."
 
 	filteredInput whenTextChangedDo: [ :arg1 |
 			list items: (model select: [ :arg2 |

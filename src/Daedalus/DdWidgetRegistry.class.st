@@ -1,3 +1,20 @@
+"
+I am a class-side registry that enumerates all widget types available in the palette. I return a fixed array of
+DdWidgetDescriptor instances, one per supported widget type.
+
+### Hierarchy
+`Object`
+`DdWidgetRegistry` (this is me)
+
+### Public API
+- `DdWidgetRegistry class>>#all` — returns the full array of available widget descriptors
+
+### Usage
+```smalltalk
+DdWidgetRegistry all do: [ :descriptor |
+    Transcript showln: descriptor label ].
+```
+"
 Class {
 	#name : 'DdWidgetRegistry',
 	#superclass : 'Object',

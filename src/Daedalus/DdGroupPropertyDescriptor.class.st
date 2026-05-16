@@ -1,3 +1,20 @@
+"
+I am the base descriptor for group widgets (radio groups, checkbox groups). I manage title, column count, show-title and show-frame
+toggles, items, and a selection sub-panel that subclasses must implement.
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor`
+`DdBasePresenterPropertyDescriptor`
+`DdItemsPropertyDescriptor`
+`DdGroupPropertyDescriptor` (this is me)
+
+### Instance Variables
+- _titleInput_: `SpTextInputFieldPresenter` — edits the group title
+- _columnCountInput_: `SpTextInputFieldPresenter` — edits the column count
+- _showTitleCheckbox_: `SpCheckBoxPresenter` — toggles title visibility
+- _showFrameCheckbox_: `SpCheckBoxPresenter` — toggles frame visibility
+"
 Class {
 	#name : 'DdGroupPropertyDescriptor',
 	#superclass : 'DdItemsPropertyDescriptor',
@@ -14,11 +31,15 @@ Class {
 
 { #category : 'adding' }
 DdGroupPropertyDescriptor >> addSelectionFieldsTo: aPanel for: aPresenter [ 
+"Abstract. Subclasses add their selection UI fields to aPanel."
+
     ^ self subclassResponsibility
 ]
 
 { #category : 'adding' }
 DdGroupPropertyDescriptor >> addSelectionPropertiesTo: result varName: varName [ 
+"Abstract. Subclasses append selection-related DdPresenterProperties to result."
+
     ^ self subclassResponsibility
 ]
 
@@ -73,5 +94,5 @@ DdGroupPropertyDescriptor >> collectPropertiesWithVarName: varName [
 
 { #category : 'as yet unclassified' }
 DdGroupPropertyDescriptor >> onItemsChanged: newItems [ 
-    "Hook — підкласи оновлюють залежні selection-компоненти"
+    "Hook called when the item collection changes. Empty by default; subclasses update dependent selection UI here."
 ]

@@ -1,3 +1,21 @@
+"
+I am the property descriptor for time picker widgets. I extend the common style fields with inputs for hour, minutes, button labels,
+and the two theme colours.
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor`
+`DdBasePresenterPropertyDescriptor`
+`DdTimePickerPropertyDescriptor` (this is me)
+
+### Instance Variables
+- _hourInput_: `SpTextInputFieldPresenter` — edits the hour (0–23)
+- _minutesInput_: `SpTextInputFieldPresenter` — edits the minutes (0–59)
+- _okLabelInput_: `SpTextInputFieldPresenter` — edits the confirm button label
+- _cancelLabelInput_: `SpTextInputFieldPresenter` — edits the cancel button label
+- _mainColorInput_: `SpTextInputFieldPresenter` — edits the primary theme colour
+- _additionColorInput_: `SpTextInputFieldPresenter` — edits the secondary theme colour
+"
 Class {
 	#name : 'DdTimePickerPropertyDescriptor',
 	#superclass : 'DdBasePresenterPropertyDescriptor',

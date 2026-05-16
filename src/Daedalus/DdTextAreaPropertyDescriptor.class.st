@@ -1,3 +1,16 @@
+"
+I am the property descriptor for text area widgets. I extend the common style fields with a content input and a wrap-word toggle.
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor`
+`DdBasePresenterPropertyDescriptor`
+`DdTextAreaPropertyDescriptor` (this is me)
+
+### Instance Variables
+- _contentInput_: `SpTextInputFieldPresenter` — edits the textarea content
+- _wrapWordCheckbox_: `SpCheckBoxPresenter` — toggles word wrapping
+"
 Class {
 	#name : 'DdTextAreaPropertyDescriptor',
 	#superclass : 'DdBasePresenterPropertyDescriptor',

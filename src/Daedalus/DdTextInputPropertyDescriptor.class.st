@@ -1,3 +1,16 @@
+"
+I am the property descriptor for text input widgets. I extend the common style fields with a content input and a placeholder input.
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor`
+`DdBasePresenterPropertyDescriptor`
+`DdTextInputPropertyDescriptor` (this is me)
+
+### Instance Variables
+- _contentInput_: `SpTextInputFieldPresenter` — edits the current text value
+- _placeholderInput_: `SpTextInputFieldPresenter` — edits the placeholder hint
+"
 Class {
 	#name : 'DdTextInputPropertyDescriptor',
 	#superclass : 'DdBasePresenterPropertyDescriptor',

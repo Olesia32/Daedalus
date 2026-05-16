@@ -1,3 +1,13 @@
+"
+I am the property descriptor for list widgets. I extend the items management panel with a button that loads items from a .txt file.
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor`
+`DdBasePresenterPropertyDescriptor`
+`DdItemsPropertyDescriptor`
+`DdListPropertyDescriptor` (this is me)
+"
 Class {
 	#name : 'DdListPropertyDescriptor',
 	#superclass : 'DdItemsPropertyDescriptor',
@@ -28,6 +38,8 @@ DdListPropertyDescriptor >> collectPropertiesWithVarName: varName [
 
 { #category : 'as yet unclassified' }
 DdListPropertyDescriptor >> loadFromFile [ 
+"Opens a file picker for .txt files, reads non-empty lines, and loads them into the items list."
+
 	| entries ref lines |
 	[ 
 		entries := StOpenFilePresenter new

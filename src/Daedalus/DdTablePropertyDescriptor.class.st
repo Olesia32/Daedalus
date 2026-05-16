@@ -1,3 +1,21 @@
+"
+I am the property descriptor for table widgets. I manage two independent concerns: column definitions (label + key pairs) and
+the row data items. I also support loading both columns and rows from a CSV file in one operation.
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor`
+`DdBasePresenterPropertyDescriptor`
+`DdItemsPropertyDescriptor`
+`DdTablePropertyDescriptor` (this is me)
+
+### Instance Variables
+- _columnLabelInput_: `SpTextInputFieldPresenter` — edits the column display label
+- _columnKeyInput_: `SpTextInputFieldPresenter` — edits the column data key
+- _columnsList_: `SpListPresenter` — displays the defined columns as label→key pairs
+- _addColumnButton_: `SpButtonPresenter` — adds a new column from the inputs
+- _removeColumnButton_: `SpButtonPresenter` — removes the selected column
+"
 Class {
 	#name : 'DdTablePropertyDescriptor',
 	#superclass : 'DdItemsPropertyDescriptor',

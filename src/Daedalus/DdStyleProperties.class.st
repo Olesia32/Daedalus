@@ -1,3 +1,16 @@
+"
+I represent a set of visual style properties (font, colors, borders, size) applied together to one presenter variable. I remove all
+previously known style calls from the AST before inserting the new ones, ensuring a clean slate on every apply.
+
+### Hierarchy
+`Object`
+`DdPresenterProperties`
+`DdStyleProperties` (this is me)
+
+### Instance Variables
+- _properties_: `Dictionary` — maps style selector strings to their
+  values; nil values denote unary selectors (bold, italic)
+"
 Class {
 	#name : 'DdStyleProperties',
 	#superclass : 'DdPresenterProperties',
@@ -41,29 +54,30 @@ DdStyleProperties >> initialize [
 ]
 
 { #category : 'translating' }
-DdStyleProperties >> patchSource: anAst [ 
-    | toRemove |
-    toRemove := anAst body statements select: [ :stmt |
-        stmt isMessage
-            and: [ stmt receiver isVariable
-            and: [ stmt receiver name = varName
-            and: [ DdStyleProperties knownSelectors includes: stmt selector ] ] ] ].
-    toRemove do: [ :node | anAst body removeNode: node ].
+DdStyleProperties >> patchSource: anAst [
+	"Removes all existing style calls for the known selectors from anAst, then inserts a fresh statement for each entry in properties."
 
-    properties keysAndValuesDo: [ :selector :value |
-        | newNode |
-        newNode := (selector endsWith: ':')
-            ifTrue: [
-                "keyword message — потребує аргумент"
-                value isNil ifTrue: [ nil ] ifFalse: [
-                    RBParser parseExpression:
-                        varName , ' ' , selector , ' ' , value printString ] ]
-            ifFalse: [
-                "unary message — без аргументу"
-                RBParser parseExpression: varName , ' ' , selector ].
-        newNode ifNotNil: [ anAst body addNode: newNode ] ].
+	| toRemove |
+	toRemove := anAst body statements select: [ :stmt |
+			            stmt isMessage and: [
+					            stmt receiver isVariable and: [
+							            stmt receiver name = varName and: [
+								            DdStyleProperties knownSelectors includes:
+									            stmt selector ] ] ] ].
+	toRemove do: [ :node | anAst body removeNode: node ].
 
-    ^ anAst
+	properties keysAndValuesDo: [ :selector :value |
+			| newNode |
+			newNode := (selector endsWith: ':')
+				           ifTrue: [ "keyword message — потребує аргумент"
+						           value ifNil: [ nil ] ifNotNil: [
+								           RBParser parseExpression:
+									           varName , ' ' , selector , ' ' , value printString ] ]
+				           ifFalse: [ "unary message — без аргументу"
+					           RBParser parseExpression: varName , ' ' , selector ].
+			newNode ifNotNil: [ anAst body addNode: newNode ] ].
+
+	^ anAst
 ]
 
 { #category : 'accessing' }

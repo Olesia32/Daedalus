@@ -1,3 +1,15 @@
+"
+I represent a single unary message of the form `varName selector`. For toggle-style selectors such as beWrapWord / beNotWrapWord I also
+remove the semantic opposite before inserting the new call.
+
+### Hierarchy
+`Object`
+`DdPresenterProperties`
+`DdUnaryProperties` (this is me)
+
+### Instance Variables
+- _selector_: `String` — the unary selector to send, e.g. `'beWrapWord'`
+"
 Class {
 	#name : 'DdUnaryProperties',
 	#superclass : 'DdPresenterProperties',
@@ -16,6 +28,8 @@ DdUnaryProperties >> applyTo: aPresenter [
 
 { #category : 'translating' }
 DdUnaryProperties >> patchSource: anAst [
+"Removes any existing call to selector or its known opposite from anAst, then inserts a fresh unary call after the variable's
+assignment node."
 
 	| oppositeSelector toRemove initNode newNode |
 	oppositeSelector := selector = 'beWrapWord'

@@ -1,3 +1,17 @@
+"
+I am the code editor panel at the bottom of the designer. I display the source of `defaultLayout` for the edited class, allow the user
+to edit it directly, and recompile it on save triggering a canvas refresh.
+
+### Hierarchy
+`SpPresenter`
+`DdLayoutCodeEditorPresenter` (this is me)
+
+### Instance Variables
+- _codeEditor_: `SpCodePresenter` — the syntax-highlighted code editor
+- _currentClass_: `Class` — the class whose defaultLayout is being edited
+- _saveButton_: `SpButtonPresenter` — triggers saveCode
+- _designer_: `DdDesignerPresenter` — notified after a successful save
+"
 Class {
 	#name : 'DdLayoutCodeEditorPresenter',
 	#superclass : 'SpPresenter',
@@ -14,10 +28,10 @@ Class {
 
 { #category : 'as yet unclassified' }
 DdLayoutCodeEditorPresenter >> classToEdit: aClass [
-
-	currentClass := aClass.
-	codeEditor beForBehavior: aClass.
-	self refreshCode
+"Sets currentClass, configures the editor's behavior context, and loads the current defaultLayout source."
+    currentClass := aClass.
+    self refreshCode.
+    codeEditor beForBehavior: aClass.
 ]
 
 { #category : 'layout' }
@@ -36,6 +50,7 @@ DdLayoutCodeEditorPresenter >> designer: aDesigner [
 
 { #category : 'as yet unclassified' }
 DdLayoutCodeEditorPresenter >> highlightVarName: aVarName [
+"Finds the line in the editor source that contains aVarName and sets the editor's selection interval to that line."
     
 	| source lines offset length lineIndex |
 	aVarName ifNil: [ ^ self ].
@@ -54,30 +69,37 @@ DdLayoutCodeEditorPresenter >> highlightVarName: aVarName [
 ]
 
 { #category : 'initialization' }
-DdLayoutCodeEditorPresenter >> initializePresenters [ 
-    super initializePresenters.
-    codeEditor := self newCode.
-    codeEditor
-        withLineNumbers;
-        withSyntaxHighlight;
-        withSmartCharacters.
-    saveButton := self newButton.
-    saveButton
-        label: 'Save';
-        action: [ self saveCode ]
+DdLayoutCodeEditorPresenter >> initializePresenters [
+
+	super initializePresenters.
+	codeEditor := self newCode.
+	codeEditor
+		withLineNumbers;
+		withSyntaxHighlight;
+		withSmartCharacters.
+	codeEditor whenBuiltDo: [
+        codeEditor withSyntaxHighlight.
+        currentClass ifNotNil: [ codeEditor beForBehavior: currentClass ] ].
+	saveButton := self newButton.
+	saveButton
+		label: 'Save';
+		action: [ self saveCode ]
 ]
 
 { #category : 'as yet unclassified' }
 DdLayoutCodeEditorPresenter >> refreshCode [
+"Reads defaultLayout source from currentClass and sets it as the editor's text content."
 
-	| source |
-	currentClass ifNil: [ ^ self ].
-	source := currentClass sourceCodeAt: #defaultLayout ifAbsent: [ '' ].
-	codeEditor text: source
+    | source |
+    currentClass ifNil: [ ^ self ].
+    source := currentClass sourceCodeAt: #defaultLayout ifAbsent: [ '' ].
+    codeEditor text: source.
+    codeEditor beForBehavior: currentClass.
 ]
 
 { #category : 'as yet unclassified' }
 DdLayoutCodeEditorPresenter >> saveCode [
+"Compiles the editor's current text onto currentClass and triggers a canvas preview refresh via the designer."
 
 	| source |
 	currentClass ifNil: [ ^ self ].

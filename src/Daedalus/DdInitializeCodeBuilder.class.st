@@ -1,3 +1,15 @@
+"
+I am responsible for generating or patching the source code of `initializePresenters`. Given a list of `DdPresenterProperties`
+I either patch the existing method's AST or produce a fresh skeleton if the method does not yet exist.
+
+### Hierarchy
+`Object`
+`DdInitializeCodeBuilder` (this is me)
+
+### Instance Variables
+- _presenterClass_: `Class` — the presenter class whose method is being patched
+- _propertiesList_: `Collection` — the list of `DdPresenterProperties` to apply to the AST
+"
 Class {
 	#name : 'DdInitializeCodeBuilder',
 	#superclass : 'Object',
@@ -10,14 +22,11 @@ Class {
 	#tag : 'Daedalus-Services'
 }
 
-{ #category : 'as yet unclassified' }
-DdInitializeCodeBuilder >> factoryMethodFor: props [ 
-    (props isKindOf: DdTextProperties) ifTrue: [ ^ 'newLabel' ].
-    ^ 'new' "fallback"
-]
-
 { #category : 'translating' }
 DdInitializeCodeBuilder >> generate [ 
+"Fetches the existing initializePresenters source, parses it into an AST, applies each DdPresenterProperties via patchSource:, and
+returns the formatted result. Falls back to generateFresh if the method does not exist."
+
     | method existingSource ast |
     method := presenterClass
         compiledMethodAt: #initializePresenters
@@ -30,6 +39,8 @@ DdInitializeCodeBuilder >> generate [
 
 { #category : 'as yet unclassified' }
 DdInitializeCodeBuilder >> generateFresh [ 
+"Returns a minimal initializePresenters source string containing only the super call, used when the method does not yet exist."
+
     | stream |
     stream := WriteStream on: String new.
     stream nextPutAll: 'initializePresenters'; cr.
@@ -37,47 +48,10 @@ DdInitializeCodeBuilder >> generateFresh [
     ^ stream contents
 ]
 
-{ #category : 'translating' }
-DdInitializeCodeBuilder >> patchSource: source [
-
-	| ast props targetVarName newValue assignNode |
-	props := propertiesList first.
-	targetVarName := props varName.
-	newValue := props label.
-
-	ast := RBParser parseMethod: source.
-
-	assignNode := ast body statements
-		              detect: [ :stmt |
-				              stmt isMessage and: [
-						              stmt receiver isVariable and: [
-							              stmt receiver name = targetVarName and: [
-								              stmt selector = #label: ] ] ] ]
-		              ifNone: [ nil ].
-
-	assignNode
-		ifNotNil: [
-				assignNode arguments first replaceWith:
-					(OCLiteralValueNode value: newValue) ]
-		ifNil: [
-				| initNode newNode |
-				initNode := ast body statements
-					            detect: [ :stmt |
-						            stmt isAssignment and: [
-							            stmt variable name = targetVarName ] ]
-					            ifNone: [ nil ].
-
-				initNode ifNil: [ ^ ast formattedCode ].
-
-				newNode := RBParser parseExpression:
-					           targetVarName , ' label: ' , newValue printString.
-				ast body addNode: newNode after: initNode ].
-
-	^ ast formattedCode
-]
-
 { #category : 'as yet unclassified' }
 DdInitializeCodeBuilder >> presenterClass: aClass properties: aCollection [ 
+"Stores presenterClass and propertiesList for use during generation."
+
     presenterClass := aClass.
     propertiesList := aCollection.
 ]

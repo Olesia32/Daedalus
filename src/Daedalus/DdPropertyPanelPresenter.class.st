@@ -1,3 +1,22 @@
+"
+I am the property panel shown on the right side of the designer. When the user selects a widget on the canvas I display its editable
+properties across two notebook tabs — Properties and Style — and provide an Apply button that compiles the changes back into the
+edited presenter class.
+
+### Hierarchy
+`SpPresenter`
+`DdPropertyPanelPresenter` (this is me)
+
+### Instance Variables
+- _targetPresenter_: `SpPresenter` — the top-level owner presenter
+- _subPresenter_: `SpPresenter` — the directly selected widget presenter
+- _editedClass_: `Class` — the presenter class being compiled into
+- _canvas_: `DdCanvasPresenter` — used to trigger preview refresh
+- _varNameInput_: `SpTextInputFieldPresenter` — displays and edits the variable name
+- _descriptor_: `DdPropertyDescriptor` — the active property descriptor for the selection
+- _applyButton_: `SpButtonPresenter` — triggers applyChanges
+- _descriptorPanel_: `SpNotebookPresenter` — hosts Properties and Style tabs
+"
 Class {
 	#name : 'DdPropertyPanelPresenter',
 	#superclass : 'SpPresenter',
@@ -18,12 +37,13 @@ Class {
 
 { #category : 'layout' }
 DdPropertyPanelPresenter >> applyChanges [
+"Renames the variable if the name input changed, collects all edited properties via the descriptor, generates patched source
+via DdInitializeCodeBuilder, compiles it, applies properties to the live presenter, and triggers a canvas refresh."
 
 	| propsList builder source varName newVarName |
 	descriptor ifNil: [ ^ self ].
 	varName := self varNameForSubPresenter.
 	varName ifNil: [ ^ self ].
-
 	newVarName := varNameInput text trim.
 	(newVarName notEmpty and: [ newVarName ~= varName ]) ifTrue: [
 			DdRenameVarService new
@@ -31,7 +51,7 @@ DdPropertyPanelPresenter >> applyChanges [
 				from: varName
 				to: newVarName.
 			varName := newVarName.
-			canvas designer codeEditor refreshCode].
+			canvas designer codeEditor refreshCode ].
 
 	propsList := descriptor collectPropertiesWithVarName: varName.
 	propsList ifEmpty: [ ^ self ].
@@ -43,7 +63,14 @@ DdPropertyPanelPresenter >> applyChanges [
 		ifNil: [ self inform: 'Compilation error' ]
 		ifNotNil: [
 				propsList do: [ :props | props applyTo: subPresenter ].
-				canvas refreshPreview ]
+				canvas refreshPreview.
+				targetPresenter := canvas selectedPresenter.
+				subPresenter := canvas selectedSubPresenter ]
+]
+
+{ #category : 'as yet unclassified' }
+DdPropertyPanelPresenter >> currentVarName [
+    ^ varNameInput text trim
 ]
 
 { #category : 'layout' }
@@ -62,6 +89,11 @@ DdPropertyPanelPresenter >> defaultLayout [
     ^ layout yourself
 ]
 
+{ #category : 'testing' }
+DdPropertyPanelPresenter >> hasSameTargetAs: aSubPresenter [
+    ^ subPresenter class == aSubPresenter class
+]
+
 { #category : 'initialization' }
 DdPropertyPanelPresenter >> initializePresenters [
 
@@ -71,36 +103,34 @@ DdPropertyPanelPresenter >> initializePresenters [
 	applyButton
 		label: 'Apply';
 		action: [ self applyChanges ].
-   varNameInput := SpTextInputFieldPresenter new.
+	varNameInput := SpTextInputFieldPresenter new.
 	descriptorPanel := SpNotebookPresenter new.
-	descriptorPanel
-		addPage: (SpNotebookPage title: 'Properties' provider: [
-						 SpPresenter new
-							 layout: SpBoxLayout newTopToBottom;
-							 yourself ]);
-		addPage: (SpNotebookPage title: 'Style' provider: [
-					 SpPresenter new
-						 layout: SpBoxLayout newTopToBottom;
-						 yourself ])
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'testing' }
 DdPropertyPanelPresenter >> rebuildDescriptorPanel [
+"Resolves the descriptor for subPresenter, rebuilds the notebook tabs with fresh Properties and Style panels, and updates the layout."
 
-	subPresenter ifNil: [ ^ self ].
-	descriptor := DdPropertyDescriptor forPresenter: subPresenter.
-	descriptor ifNil: [ ^ self ].
-	descriptorPanel pages copy do: [ :p | descriptorPanel removePage: p ].
+    subPresenter ifNil: [ ^ self ].
+    descriptor := DdPropertyDescriptor forPresenter: subPresenter.
+    descriptor ifNil: [ ^ self ].
 
-	descriptorPanel
-		addPage: (SpNotebookPage
-				 title: 'Properties'
-				 provider: [ descriptor buildPanelFor: subPresenter ]);
-		addPage: (SpNotebookPage
-				 title: 'Style'
-				 provider: [ descriptor buildStylePanelFor: subPresenter ]).
+    descriptorPanel := SpNotebookPresenter new.
 
-	self rebuildLayout
+    descriptorPanel
+        addPage: (SpNotebookPage
+            title: 'Properties'
+            provider: [
+                | inner |
+                inner := descriptor buildPanelFor: subPresenter.
+                SpPresenter new
+                    layout: (SpScrollableLayout new child: inner layout; yourself);
+                    yourself ]);
+        addPage: (SpNotebookPage
+            title: 'Style'
+            provider: [ descriptor buildStylePanelFor: subPresenter ]).
+
+    self rebuildLayout
 ]
 
 { #category : 'private' }
@@ -112,8 +142,17 @@ DdPropertyPanelPresenter >> rebuildLayout [
 		updatePresenter
 ]
 
+{ #category : 'as yet unclassified' }
+DdPropertyPanelPresenter >> syncTarget: aPresenter subPresenter: aSubPresenter [
+    targetPresenter := aPresenter.
+    subPresenter := aSubPresenter.
+    varNameInput text: (self varNameForSubPresenter ifNil: [ '' ])
+]
+
 { #category : 'layout' }
-DdPropertyPanelPresenter >> target: aPresenter subPresenter: aSubPresenter onClass: aClass canvas: aCanvas [ 
+DdPropertyPanelPresenter >> target: aPresenter subPresenter: aSubPresenter onClass: aClass canvas: aCanvas [
+"Sets the target, sub-presenter, class and canvas, pre-populates the variable name input, and rebuilds the descriptor panel."
+ 
     targetPresenter := aPresenter.
     subPresenter := aSubPresenter.
     editedClass := aClass.
@@ -124,18 +163,24 @@ DdPropertyPanelPresenter >> target: aPresenter subPresenter: aSubPresenter onCla
 
 { #category : 'as yet unclassified' }
 DdPropertyPanelPresenter >> varNameForSubPresenter [
+"Walks targetPresenter's inst vars to find the index at which subPresenter is stored, returning the corresponding variable name
+or nil if not found."
 
-	| tmp1 tmp2 tmp3 |
-	targetPresenter ifNil: [ ^ nil ] ifNotNil: [ targetPresenter ].
-	tmp1 := targetPresenter class allInstVarNames.
-	tmp2 := targetPresenter class instSize.
-	1 to: tmp2 do: [ :tmp4 |
-			tmp3 := nil.
-			tmp3 := targetPresenter instVarAt: tmp4.
-			tmp3 == subPresenter ifTrue: [ ^ tmp1 at: tmp4 ].
-			nil.
-			(tmp3 respondsTo: #mainPresenter) ifTrue: [
-				tmp3 mainPresenter == subPresenter ifTrue: [ ^ tmp1 at: tmp4 ] ] ].
-	1.
-	^ nil
+    | searchIn |
+    targetPresenter ifNil: [ ^ nil ].
+    searchIn := (targetPresenter == subPresenter)
+        ifTrue: [ targetPresenter owner ]
+        ifFalse: [ targetPresenter ].
+    
+    searchIn ifNil: [ ^ nil ].
+    
+    1 to: searchIn class instSize do: [ :i |
+        | val |
+        val := searchIn instVarAt: i.
+        val == subPresenter ifTrue: [ ^ searchIn class allInstVarNames at: i ].
+        (val respondsTo: #mainPresenter) ifTrue: [
+            val mainPresenter == subPresenter ifTrue: [ 
+                ^ searchIn class allInstVarNames at: i ] ] ].
+    
+    ^ nil
 ]

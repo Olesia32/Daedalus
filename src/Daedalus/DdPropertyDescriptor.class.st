@@ -1,3 +1,16 @@
+"
+I am the abstract root of the property descriptor hierarchy. I declare the two operations every descriptor must support: building
+a UI panel for a given presenter, and collecting the edited properties as a list of DdPresenterProperties objects ready to be
+compiled into source code.
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor` (this is me)
+
+### Public API
+- `DdPropertyDescriptor class>>#forPresenter:` — factory method; inspects the presenter's type and returns the matching concrete
+  descriptor, or nil if the type is unknown
+"
 Class {
 	#name : 'DdPropertyDescriptor',
 	#superclass : 'Object',
@@ -8,6 +21,8 @@ Class {
 
 { #category : 'as yet unclassified' }
 DdPropertyDescriptor class >> forPresenter: aPresenter [
+"Factory. Inspects the kind of aPresenter (or its mainPresenter) and returns the appropriate concrete DdPropertyDescriptor subclass
+instance, or nil for unrecognised types."
 
 	| mainP |
 	mainP := (aPresenter respondsTo: #mainPresenter)
@@ -48,13 +63,15 @@ DdPropertyDescriptor class >> forPresenter: aPresenter [
 ]
 
 { #category : 'as yet unclassified' }
-DdPropertyDescriptor >> buildPanelFor: aPresenter [ 
-    "Підкласи реалізують — будують і повертають SpPresenter з полями"
-    ^ self subclassResponsibility
+DdPropertyDescriptor >> buildPanelFor: aPresenter [
+	"Abstract. Subclasses build and return a SpPresenter populated with property input fields for the given presenter."
+
+	^ self subclassResponsibility
 ]
 
 { #category : 'as yet unclassified' }
-DdPropertyDescriptor >> collectPropertiesWithVarName: varName [ 
-    "Зчитує значення з UI і повертає колекцію DdPresenterProperties"
-    ^ self subclassResponsibility
+DdPropertyDescriptor >> collectPropertiesWithVarName: varName [
+	"Abstract. Subclasses read their input fields and return a collection of DdPresenterProperties ready to patch and compile."
+
+	^ self subclassResponsibility
 ]

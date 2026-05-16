@@ -1,3 +1,15 @@
+"
+I am the property descriptor for date picker widgets. I extend the common style fields with a single date input in YYYY-MM-DD format.
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor`
+`DdBasePresenterPropertyDescriptor`
+`DdDatePickerPropertyDescriptor` (this is me)
+
+### Instance Variables
+- _dateInput_: `SpTextInputFieldPresenter` — edits the selected date
+"
 Class {
 	#name : 'DdDatePickerPropertyDescriptor',
 	#superclass : 'DdBasePresenterPropertyDescriptor',

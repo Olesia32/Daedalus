@@ -1,3 +1,14 @@
+"
+I represent a label: message sent to a presenter. I am used for widgets that display text via label: such as buttons, labels and checkboxes.
+
+### Hierarchy
+`Object`
+`DdPresenterProperties`
+`DdTextProperties` (this is me)
+
+### Instance Variables
+- _text_: `String` — the label text to set on the presenter
+"
 Class {
 	#name : 'DdTextProperties',
 	#superclass : 'DdPresenterProperties',
@@ -16,6 +27,9 @@ DdTextProperties >> applyTo: aPresenter [
 
 { #category : 'translating' }
 DdTextProperties >> patchSource: anAst [
+"Finds an existing varName label: call in anAst and replaces its string argument with text; inserts a new label: call after the
+assignment node if none is found."
+
     | assignNode |
     assignNode := anAst body statements
         detect: [ :stmt |

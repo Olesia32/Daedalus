@@ -1,8 +1,23 @@
+"
+I am the property descriptor for combobox widgets. I extend the common style fields with an items list, add/remove buttons, and a selected-index input.
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor`
+`DdBasePresenterPropertyDescriptor`
+`DdComboboxPropertyDescriptor` (this is me)
+
+### Instance Variables
+- _itemsList_: `SpListPresenter` — displays the current list of items
+- _addItemInput_: `SpTextInputFieldPresenter` — input for a new item
+- _addItemButton_: `SpButtonPresenter` — adds the typed item to the list
+- _removeItemButton_: `SpButtonPresenter` — removes the selected item
+- _selectedIndexInput_: `SpTextInputFieldPresenter` — edits the pre-selected index
+"
 Class {
 	#name : 'DdComboboxPropertyDescriptor',
 	#superclass : 'DdBasePresenterPropertyDescriptor',
 	#instVars : [
-		'itemsInput',
 		'selectedIndexInput',
 		'itemsList',
 		'addItemInput',

@@ -1,3 +1,18 @@
+"
+I am the property descriptor for radio button group widgets. I extend the group descriptor with a selected-index input that controls which
+radio button is pre-selected.
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor`
+`DdBasePresenterPropertyDescriptor`
+`DdItemsPropertyDescriptor`
+`DdGroupPropertyDescriptor`
+`DdRadioGroupPropertyDescriptor` (this is me)
+
+### Instance Variables
+- _selectedIndexInput_: `SpTextInputFieldPresenter` — edits the index of the pre-selected radio button
+"
 Class {
 	#name : 'DdRadioGroupPropertyDescriptor',
 	#superclass : 'DdGroupPropertyDescriptor',

@@ -1,3 +1,15 @@
+"
+I am the property descriptor for progress bar widgets. I extend the common style panel with a numeric value input (0–100).
+
+### Hierarchy
+`Object`
+`DdPropertyDescriptor`
+`DdBasePresenterPropertyDescriptor`
+`DdProgressBarPropertyDescriptor` (this is me)
+
+### Instance Variables
+- _valueInput_: `SpTextInputFieldPresenter` — edits the current progress value
+"
 Class {
 	#name : 'DdProgressBarPropertyDescriptor',
 	#superclass : 'DdBasePresenterPropertyDescriptor',

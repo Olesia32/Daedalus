@@ -1,3 +1,16 @@
+"
+I represent a single addColumn: call on a table presenter. I carry a column label and a data key, and I know how to both apply the
+column to a live presenter and patch the source AST with the corresponding addColumn: expression.
+
+### Hierarchy
+`Object`
+`DdPresenterProperties`
+`DdTableColumnProperties` (this is me)
+
+### Instance Variables
+- _label_: `String` — the column header text shown in the table
+- _key_: `Symbol` — the dictionary key used to extract the cell value
+"
 Class {
 	#name : 'DdTableColumnProperties',
 	#superclass : 'DdPresenterProperties',

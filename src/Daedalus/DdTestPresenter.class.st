@@ -16,12 +16,11 @@ Class {
 		'listPresenter',
 		'hobbyGroup',
 		'nameInputPresenter',
-		'label1',
 		'agreeCheckBox'
 	],
-	#category : 'Daedalus-Daedalus-Services',
+	#category : 'Daedalus-Daedalus-Examples',
 	#package : 'Daedalus',
-	#tag : 'Daedalus-Services'
+	#tag : 'Daedalus-Examples'
 }
 
 { #category : 'layout' }
@@ -30,23 +29,21 @@ DdTestPresenter >> defaultLayout [
 	^ SpBoxLayout new
 		  spacing: 10;
 		  add: titleLabel expand: false;
-		  add: nameInputPresenter expand: true;
+		  add: nameInputPresenter expand: false;
 		  add: combobox expand: false;
 		  add: agreeCheckBox expand: false;
 		  add: genderGroup expand: false;
 		  add: hobbyGroup expand: false;
-		  add: table expand: true;
 		  add: submitButton expand: false;
-		  add: newButton;
 		  yourself
 ]
 
 { #category : 'initialization' }
 DdTestPresenter >> initializePresenters [
-   |items|
+
+	| items |
 	super initializePresenters.
-	label1 := PresenterDecorator wrap: SpLabelPresenter.
-	label1 label: 'Label'.
+
 	newButton := PresenterDecorator wrap: SpButtonPresenter.
 	newButton label: 'New button'.
 
@@ -54,16 +51,32 @@ DdTestPresenter >> initializePresenters [
 	titleLabel label: 'Test form'.
 
 	table := SpTablePresenter new.
-items := OrderedCollection new.
-items add: (Dictionary new at: #name put: 'Alice'; at: #age put: 25; at: #city put: 'Lviv'; yourself).
-items add: (Dictionary new at: #name put: 'Bob'; at: #age put: 30; at: #city put: 'Kyiv'; yourself).
-items add: (Dictionary new at: #name put: 'Charlie'; at: #age put: 22; at: #city put: 'Odesa'; yourself).
+	items := OrderedCollection new.
+	items add: (Dictionary new
+			 at: #name put: 'Alice';
+			 at: #age put: 25;
+			 at: #city put: 'Lviv';
+			 yourself).
+	items add: (Dictionary new
+			 at: #name put: 'Bob';
+			 at: #age put: 30;
+			 at: #city put: 'Kyiv';
+			 yourself).
+	items add: (Dictionary new
+			 at: #name put: 'Charlie';
+			 at: #age put: 22;
+			 at: #city put: 'Odesa';
+			 yourself).
 
-table
-    addColumn: (SpStringTableColumn title: 'Name' evaluated: [ :p | p at: #name ]);
-    addColumn: (SpStringTableColumn title: 'Age' evaluated: [ :p | (p at: #age) printString ]);
-    addColumn: (SpStringTableColumn title: 'City' evaluated: [ :p | p at: #city ]);
-    items: items.
+	table
+		addColumn:
+			(SpStringTableColumn title: 'Name' evaluated: [ :p | p at: #name ]);
+		addColumn: (SpStringTableColumn
+				 title: 'Age'
+				 evaluated: [ :p | (p at: #age) printString ]);
+		addColumn:
+			(SpStringTableColumn title: 'City' evaluated: [ :p | p at: #city ]);
+		items: items.
 
 	textArea := PresenterDecorator wrap: SpTextPresenter.
 	textArea beNotWrapWord.
@@ -72,10 +85,10 @@ table
 
 
 	submitButton := ButtonPresenter new.
-	submitButton label: 'Submit'.
+	submitButton label: 'Submi'.
 
 	nameInputPresenter := TextInputPresenter new.
-	nameInputPresenter text: 'Olesiа'.
+	nameInputPresenter text: 'Olesia'.
 	nameInputPresenter placeholder: 'Enter your name'.
 
 	combobox := ComboBoxPresenter new.
@@ -87,25 +100,26 @@ table
 
 	agreeCheckBox := CheckboxPresenter new.
 	agreeCheckBox state: true.
-	agreeCheckBox label: 'I agree'.
+	agreeCheckBox label: 'I agree!'.
 
 	genderGroup := RadioGroupPresenter new.
-	genderGroup itemSelected: 1.
+	genderGroup itemSelected: 2.
 	genderGroup showFrame: false.
-	genderGroup showTitle: false.
+	genderGroup showTitle: true.
 	genderGroup title: 'Gender'.
-	genderGroup items: #( 'male' 'female' 'other' ).
+	genderGroup items: #( 'male' 'female' ).
 	genderGroup сolumnCount: 3.
 
 	listPresenter := ListPresenter new.
-	listPresenter items: #( '1' '2' '3' '4' '5' '6' ).
+	listPresenter items: #( '1' '2' '3' '5' '6' '7' '4' ).
 
 	hobbyGroup := CheckboxGroupPresenter new.
-	hobbyGroup items:
-		#( 'Cooking' 'Traveling' 'Reading' 'Programming' 'Painting' ).
+	hobbyGroup items: #( 'Cooking' 'Traveling' 'Programming'
+	   'Running' ).
+	hobbyGroup selectedIndexes: #( 1 ).
 	hobbyGroup showFrame: false.
-	hobbyGroup showTitle: true.
-	hobbyGroup сolumnCount: 3.
+	hobbyGroup showTitle: false.
+	hobbyGroup сolumnCount: 2.
 	hobbyGroup title: 'Hobby'.
 	prioritySlider := PresenterDecorator wrap: SpSliderPresenter.
 	prioritySlider quantum: 3.
