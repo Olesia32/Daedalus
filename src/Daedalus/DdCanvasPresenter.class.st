@@ -139,7 +139,7 @@ DdCanvasPresenter >> installClickHooks [
 		(m respondsTo: #removeActionsForEvent:) ifTrue: [
 			m removeActionsForEvent: #mouseDown ] ].
 
-	presenterIndex presenters do: [ :p |
+	rootPreviewPresenter allPresenters do: [ :p |
 		(p adapter notNil and: [ p adapter widget notNil ]) ifTrue: [
 			| w |
 			w := p adapter widget.
@@ -158,7 +158,7 @@ returning an Association of presenter→subPresenter."
                             TimePickerPresenter }.
     m := aMorph.
     [ m notNil ] whileTrue: [
-        presenterIndex presenters do: [ :p |
+        rootPreviewPresenter allPresenters do: [ :p |
             (p adapter notNil and: [ p adapter widget == m ]) ifTrue: [
                 | current |
                 current := p owner.
@@ -191,24 +191,16 @@ DdCanvasPresenter >> rebuildPreview [
 "Instantiates a fresh preview from editedPresenter, rebuilds the presenter index, updates the layout, and schedules click hook
 installation after two UI cycles."
 
-	| newPresenter |
-	newPresenter := editedPresenter class new.
-	newPresenter build.
-	rootPreviewPresenter := newPresenter.
-	presenterIndex := DdPresenterIndex new buildFromRootPresenter:
-		                  rootPreviewPresenter.
-	self layout: (SpBoxLayout new
-			 spacing: 30;
-			 add: rootPreviewPresenter;
-			 yourself).
-	self needRebuild: true.
+	 | newPresenter |
+    newPresenter := editedPresenter class new.
+    newPresenter build.
+    rootPreviewPresenter := newPresenter.
 
-	self updatePresenter.
-	UIManager default defer: [
-		UIManager default defer: [  
-			presenterIndex := DdPresenterIndex new
-				buildFromRootPresenter: rootPreviewPresenter.
-			self installClickHooks ] ]
+    self layout: (SpBoxLayout new
+        spacing: 30;
+        add: rootPreviewPresenter;
+        yourself).
+    self installClickHooks 
 ]
 
 { #category : 'accessing' }
@@ -217,38 +209,31 @@ DdCanvasPresenter >> refreshPreview [
 selected presenters by variable name, and reinstalls click hooks."
 
 	| subVarName presenterVarName |
-	subVarName := selectedSubPresenter ifNotNil: [
-		              self instVarNameForPresenterInRoot:
-			              selectedSubPresenter ].
-	presenterVarName := selectedPresenter ifNotNil: [
-		                    self instVarNameForPresenterInRoot:
-			                    selectedPresenter ].
+    subVarName := selectedSubPresenter ifNotNil: [
+        self instVarNameForPresenterInRoot: selectedSubPresenter ].
+    presenterVarName := selectedPresenter ifNotNil: [
+        self instVarNameForPresenterInRoot: selectedPresenter ].
 
-	SpNullApplication skipReset: true.
-	[
-		rootPreviewPresenter initializePresenters.
-		rootPreviewPresenter layout: rootPreviewPresenter defaultLayout ]
-		ensure: [ SpNullApplication skipReset: false ].
+    SpNullApplication skipReset: true.
+    [
+        rootPreviewPresenter initializePresenters.
+        rootPreviewPresenter layout: rootPreviewPresenter defaultLayout.
+    ] ensure: [ SpNullApplication skipReset: false ].
 
-	presenterIndex := DdPresenterIndex new buildFromRootPresenter:
-		                  rootPreviewPresenter.
+    presenterVarName ifNotNil: [
+        | idx |
+        idx := rootPreviewPresenter class allInstVarNames indexOf: presenterVarName.
+        idx > 0 ifTrue: [
+            selectedPresenter := rootPreviewPresenter instVarAt: idx ] ].
 
-	presenterVarName ifNotNil: [
-			| idx |
-			idx := rootPreviewPresenter class allInstVarNames indexOf:
-				       presenterVarName.
-			idx > 0 ifTrue: [
-				selectedPresenter := rootPreviewPresenter instVarAt: idx ] ].
+    subVarName ifNotNil: [
+        | idx |
+        idx := rootPreviewPresenter class allInstVarNames indexOf: subVarName.
+        idx > 0 ifTrue: [
+            selectedSubPresenter := rootPreviewPresenter instVarAt: idx ] ].
 
-	subVarName ifNotNil: [
-			| idx |
-			idx := rootPreviewPresenter class allInstVarNames indexOf:
-				       subVarName.
-			idx > 0 ifTrue: [
-				selectedSubPresenter := rootPreviewPresenter instVarAt: idx ] ].
-
-	UIManager default defer: [
-			self installClickHooks. ]
+        self installClickHooks.
+        designer ifNotNil: [ designer onSelectionChanged ]
 ]
 
 { #category : 'accessing' }

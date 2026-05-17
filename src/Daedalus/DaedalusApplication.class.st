@@ -32,6 +32,6 @@ DaedalusApplication class >> runOn: aPresenterClass [
 	designer open.
 	designer withWindowDo: [ :w |
 		w title: 'Daedalus — ' , aPresenterClass name ].
-	Processor yield.
+
 	(designer instVarNamed: #workArea) installClickHooks
 ]

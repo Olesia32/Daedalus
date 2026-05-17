@@ -15,9 +15,9 @@ Class {
 	#instVars : [
 		'varName'
 	],
-	#category : 'Daedalus-Daedalus-DataModel',
+	#category : 'Daedalus-Daedalus-Services',
 	#package : 'Daedalus',
-	#tag : 'Daedalus-DataModel'
+	#tag : 'Daedalus-Services'
 }
 
 { #category : 'translating' }

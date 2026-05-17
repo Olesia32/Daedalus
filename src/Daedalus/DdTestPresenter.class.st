@@ -85,7 +85,7 @@ DdTestPresenter >> initializePresenters [
 
 
 	submitButton := ButtonPresenter new.
-	submitButton label: 'Submi'.
+	submitButton label: 'Submit'.
 
 	nameInputPresenter := TextInputPresenter new.
 	nameInputPresenter text: 'Olesia'.
@@ -93,21 +93,21 @@ DdTestPresenter >> initializePresenters [
 
 	combobox := ComboBoxPresenter new.
 	combobox selectIndex: 0.
-	combobox items: #( 'Apple' 'Banana' 'Cherry' 'Orange' ).
+	combobox items: #( 'Apple' 'Banana' 'Orange' ).
 
 	date := PresenterDecorator wrap: SpDatePresenter.
 	date date: '20 June 2026'.
 
 	agreeCheckBox := CheckboxPresenter new.
 	agreeCheckBox state: true.
-	agreeCheckBox label: 'I agree!'.
+	agreeCheckBox label: 'I agree'.
 
 	genderGroup := RadioGroupPresenter new.
 	genderGroup itemSelected: 2.
 	genderGroup showFrame: false.
 	genderGroup showTitle: true.
 	genderGroup title: 'Gender'.
-	genderGroup items: #( 'male' 'female' ).
+	genderGroup items: #( 'male' 'female' 'other' ).
 	genderGroup сolumnCount: 3.
 
 	listPresenter := ListPresenter new.

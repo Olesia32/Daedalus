@@ -18,16 +18,16 @@ Class {
 		'selector',
 		'value'
 	],
-	#category : 'Daedalus-Daedalus-DataModel',
+	#category : 'Daedalus-Daedalus-Services',
 	#package : 'Daedalus',
-	#tag : 'Daedalus-DataModel'
+	#tag : 'Daedalus-Services'
 }
 
 { #category : 'operations' }
 DdGenericProperties >> applyTo: aPresenter [ 
 "Sends selector asSymbol with value to aPresenter for immediate live preview, silently ignoring errors."
-
-    [ aPresenter perform: selector asSymbol with: value ] on: Error do: [ ]
+    
+    aPresenter perform: selector asSymbol with: value 
 ]
 
 { #category : 'translating' }

@@ -85,21 +85,21 @@ and rebuilds the layout."
     | selected selectedSub varName |
     selected := workArea selectedPresenter.
     selectedSub := workArea selectedSubPresenter.
-
     selected ifNil: [ ^ self ].
 
     selected == selectedSub ifFalse: [
-        (selected respondsTo: #mainPresenter) ifTrue: [
-            selectedSub := selected.
-            selected := selected owner ].
-
-        (selected isKindOf: RadioGroupPresenter) ifTrue: [
-            selectedSub := selected.
-            selected := selected owner ].
-
-        (selected isKindOf: CheckboxGroupPresenter) ifTrue: [
-            selectedSub := selected.
-            selected := selected owner ] ].
+    (selected respondsTo: #mainPresenter) ifTrue: [
+        selectedSub := selected.
+        selected := selected owner ].
+    (selected isKindOf: RadioGroupPresenter) ifTrue: [
+        selectedSub := selected.
+        selected := selected owner ].
+    (selected isKindOf: CheckboxGroupPresenter) ifTrue: [
+        selectedSub := selected.
+        selected := selected owner ] ].
+    (selected isKindOf: ComboBoxPresenter ) ifTrue: [
+        selectedSub := selected.
+        selected := selected owner].
 
     propertyPanel := DdPropertyPanelPresenter new.
     propertyPanel
@@ -143,7 +143,7 @@ presenter := aClass.
         subPresenter: nil
         onClass: nil
         canvas: workArea.
-    WorldMorph doOneCycle.
+    
     workArea installClickHooks
 ]
 
