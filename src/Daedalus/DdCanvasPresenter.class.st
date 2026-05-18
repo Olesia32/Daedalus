@@ -23,8 +23,7 @@ Class {
 		'rootPreviewPresenter',
 		'presenterIndex',
 		'selectedPresenter',
-		'designer',
-		'selectedSubPresenter'
+		'designer'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -40,51 +39,30 @@ DdCanvasPresenter class >> onPresenter: aPresenter [
 ]
 
 { #category : 'as yet unclassified' }
-DdCanvasPresenter >> clickedMorphFromEvent: arg1 [
-
-	| tmp1 |
-	tmp1 := arg1 position.
-	^ self deepestMorphAt: tmp1
-]
-
-{ #category : 'as yet unclassified' }
 DdCanvasPresenter >> ddOnMouseDown: anEvent [
-"Resolves the clicked morph to a selected presenter and sub-presenter pair, updates the selection state, and notifies
-the designer."
 
-	| clickedMorph result |
-	clickedMorph := self clickedMorphFromEvent: anEvent.
-	clickedMorph ifNil: [ ^ self ].
-
-	result := self presenterFromClickedMorph: clickedMorph.
+	| model result handler |
+	handler := anEvent handler.
+	model := [ handler model model ]
+		         on: Error
+		         do: [
+				         result := self presenterFromMorphWithoutModel: handler.
+				         result ifNil: [ ^ self ].
+				         selectedPresenter := result owner ifNil: [ result ].
+				         designer ifNotNil: [ designer onSelectionChanged ].
+				         (anEvent respondsTo: #wasHandled:) ifTrue: [
+					         anEvent wasHandled: true ].
+				         ^ self ].
+	result := model owner.
 	result ifNil: [ ^ self ].
-	selectedPresenter := result key.
-	selectedSubPresenter := result value.
+	selectedPresenter := result.
+	(selectedPresenter owner isKindOf: RadioGroupPresenter) ifTrue: [
+		selectedPresenter := selectedPresenter owner ].
+	(selectedPresenter owner isKindOf: CheckboxGroupPresenter) ifTrue: [
+		selectedPresenter := selectedPresenter owner ].
 	designer ifNotNil: [ designer onSelectionChanged ].
 	(anEvent respondsTo: #wasHandled:) ifTrue: [
 		anEvent wasHandled: true ]
-]
-
-{ #category : 'as yet unclassified' }
-DdCanvasPresenter >> deepestMorphAt: arg1 [
-
-	| tmp1 |
-	tmp1 := rootPreviewPresenter adapter widget.
-	tmp1 ifNil: [ ^ nil ].
-	tmp1.
-	^ self deepestMorphIn: tmp1 at: arg1
-]
-
-{ #category : 'as yet unclassified' }
-DdCanvasPresenter >> deepestMorphIn: arg1 at: arg2 [
-"Recursively finds the deepest morph at aPoint within arg1's submorph tree."
-
-	(arg1 bounds containsPoint: arg2) ifFalse: [ ^ nil ].
-	arg1 submorphs reverseDo: [ :arg3 |
-			| tmp1 |
-			tmp1 := self deepestMorphIn: arg3 at: arg2.
-			tmp1 ifNotNil: [ ^ tmp1 ] ].
-	^ arg1
 ]
 
 { #category : 'layout' }
@@ -128,7 +106,7 @@ DdCanvasPresenter >> instVarNameForPresenterInRoot: aPresenter [
 
 { #category : 'accessing' }
 DdCanvasPresenter >> installClickHooks [
-"Attaches a mouseDown handler on every indexed presenter widget so that clicks on the preview are routed to ddOnMouseDown:."
+	"Attaches a mouseDown handler on every indexed presenter widget so that clicks on the preview are routed to ddOnMouseDown:."
 
 	| root |
 	root := rootPreviewPresenter adapter widget.
@@ -136,48 +114,30 @@ DdCanvasPresenter >> installClickHooks [
 
 	"Знімаємо старі обробники"
 	root allMorphsDo: [ :m |
-		(m respondsTo: #removeActionsForEvent:) ifTrue: [
-			m removeActionsForEvent: #mouseDown ] ].
-
+			(m respondsTo: #removeActionsForEvent:) ifTrue: [
+				m removeActionsForEvent: #mouseDown ] ].
+	
 	rootPreviewPresenter allPresenters do: [ :p |
-		(p adapter notNil and: [ p adapter widget notNil ]) ifTrue: [
-			| w |
-			w := p adapter widget.
-			(w respondsTo: #on:send:to:) ifTrue: [
-				w on: #mouseDown send: #ddOnMouseDown: to: self ] ] ].
+			(p adapter notNil and: [ p adapter widget notNil ]) ifTrue: [
+					| w |
+					w := p adapter widget.
+					(w respondsTo: #on:send:to:) ifTrue: [
+						w on: #mouseDown send: #ddOnMouseDown: to: self ] ] ]
 ]
 
-{ #category : 'accessing' }
-DdCanvasPresenter >> presenterFromClickedMorph: aMorph [
-"Walks up the morph ownership chain from aMorph to find the nearest user-defined presenter that owns the clicked widget,
-returning an Association of presenter→subPresenter."
-
-    | m compositeClasses |
-    compositeClasses := {
-                            ComboBoxPresenter.
-                            TimePickerPresenter }.
+{ #category : 'as yet unclassified' }
+DdCanvasPresenter >> presenterFromMorphWithoutModel: aMorph [
+"Walks up the morph ownership chain from aMorph, searching allPresenters 
+for a presenter whose adapter widget matches. Returns the found presenter or nil."
+    | m result |
     m := aMorph.
-    [ m notNil ] whileTrue: [
+    result := nil.
+    [ m notNil and: [ result isNil ] ] whileTrue: [
         rootPreviewPresenter allPresenters do: [ :p |
             (p adapter notNil and: [ p adapter widget == m ]) ifTrue: [
-                | current |
-                current := p owner.
-                [ current notNil 
-    and: [ (current isKindOf: SpPresenter) 
-    and: [ current ~~ rootPreviewPresenter ] ] 
-] whileTrue: [
-                    | varName |
-                    varName := self instVarNameForPresenterInRoot: current.
-                    varName ifNotNil: [
-                        (compositeClasses anySatisfy: [ :cls | current isKindOf: cls ])
-                            ifTrue: [ ^ Association key: current value: current ]
-                            ifFalse: [ ^ Association key: current value: p ] ].
-                    current := current owner ].
-
-                (self instVarNameForPresenterInRoot: p) ifNotNil: [
-                    ^ Association key: p value: p ] ] ].
+                result := p ] ].
         m := m owner ].
-    ^ nil
+    ^ result
 ]
 
 { #category : 'accessing' }
@@ -209,9 +169,7 @@ DdCanvasPresenter >> refreshPreview [
 selected presenters by variable name, and reinstalls click hooks."
 
 	| subVarName presenterVarName |
-    subVarName := selectedSubPresenter ifNotNil: [
-        self instVarNameForPresenterInRoot: selectedSubPresenter ].
-    presenterVarName := selectedPresenter ifNotNil: [
+    subVarName := selectedPresenter ifNotNil: [
         self instVarNameForPresenterInRoot: selectedPresenter ].
 
     SpNullApplication skipReset: true.
@@ -220,17 +178,11 @@ selected presenters by variable name, and reinstalls click hooks."
         rootPreviewPresenter layout: rootPreviewPresenter defaultLayout.
     ] ensure: [ SpNullApplication skipReset: false ].
 
-    presenterVarName ifNotNil: [
-        | idx |
-        idx := rootPreviewPresenter class allInstVarNames indexOf: presenterVarName.
-        idx > 0 ifTrue: [
-            selectedPresenter := rootPreviewPresenter instVarAt: idx ] ].
-
     subVarName ifNotNil: [
         | idx |
         idx := rootPreviewPresenter class allInstVarNames indexOf: subVarName.
         idx > 0 ifTrue: [
-            selectedSubPresenter := rootPreviewPresenter instVarAt: idx ] ].
+            selectedPresenter := rootPreviewPresenter instVarAt: idx ] ].
 
         self installClickHooks.
         designer ifNotNil: [ designer onSelectionChanged ]
@@ -246,10 +198,4 @@ DdCanvasPresenter >> rootPreviewPresenter [
 DdCanvasPresenter >> selectedPresenter [
 
 	^ selectedPresenter
-]
-
-{ #category : 'accessing' }
-DdCanvasPresenter >> selectedSubPresenter [
-
-	^ selectedSubPresenter
 ]

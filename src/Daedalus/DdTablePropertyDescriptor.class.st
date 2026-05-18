@@ -118,7 +118,7 @@ DdTablePropertyDescriptor >> collectPropertiesWithVarName: varName [
 					 key: assoc value;
 					 yourself ]).
 	itemsList items ifNotEmpty: [ :items |
-			result add: (DdGenericProperties new
+			result add: (DdKeywordProperties new
 					 varName: varName;
 					 selector: 'items:';
 					 value: items asArray;

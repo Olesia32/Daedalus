@@ -90,15 +90,5 @@ DdWidgetRegistry class >> all [
 		  (DdWidgetDescriptor new
 			   label: 'Time picker'
 			   icon: (Smalltalk ui icons iconNamed: #calendar)
-			   presenter: TimePickerPresenter).
-
-		  (DdWidgetDescriptor new
-			   label: 'Table'
-			   icon: (Smalltalk ui icons iconNamed: #table)
-			   presenter: PaginatedTablePresenter).
-
-		  (DdWidgetDescriptor new
-			   label: 'Tree'
-			   icon: (Smalltalk ui icons iconNamed: #add)
-			   presenter: SpTreePresenter) }
+			   presenter: TimePickerPresenter). }
 ]

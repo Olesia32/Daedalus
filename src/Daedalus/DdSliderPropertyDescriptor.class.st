@@ -60,19 +60,19 @@ DdSliderPropertyDescriptor >> collectPropertiesWithVarName: varName [
     | result |
     result := super collectPropertiesWithVarName: varName.
     labelInput text ifNotEmpty: [ :v |
-        result add: (DdGenericProperties new
+        result add: (DdKeywordProperties new
             varName: varName; selector: 'label:'; value: v; yourself) ].
     minInput text ifNotEmpty: [ :v |
-        result add: (DdGenericProperties new
+        result add: (DdKeywordProperties new
             varName: varName; selector: 'min:'; value: v asNumber; yourself) ].
     maxInput text ifNotEmpty: [ :v |
-        result add: (DdGenericProperties new
+        result add: (DdKeywordProperties new
             varName: varName; selector: 'max:'; value: v asNumber; yourself) ].
     valueInput text ifNotEmpty: [ :v |
-        result add: (DdGenericProperties new
+        result add: (DdKeywordProperties new
             varName: varName; selector: 'value:'; value: v asNumber; yourself) ].
     quantumInput text ifNotEmpty: [ :v |
-        result add: (DdGenericProperties new
+        result add: (DdKeywordProperties new
             varName: varName; selector: 'quantum:'; value: v asNumber; yourself) ].
     ^ result
 ]

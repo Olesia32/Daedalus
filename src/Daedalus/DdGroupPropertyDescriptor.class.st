@@ -73,17 +73,17 @@ DdGroupPropertyDescriptor >> collectPropertiesWithVarName: varName [
     result := super collectPropertiesWithVarName: varName.
 
     titleInput text ifNotEmpty: [ :v |
-        result add: (DdGenericProperties new
+        result add: (DdKeywordProperties new
             varName: varName; selector: 'title:'; value: v; yourself) ].
 
     columnCountInput text ifNotEmpty: [ :v |
-        result add: (DdGenericProperties new
+        result add: (DdKeywordProperties new
             varName: varName; selector: 'сolumnCount:'; value: v asInteger; yourself) ].
 
-    result add: (DdGenericProperties new
+    result add: (DdKeywordProperties new
         varName: varName; selector: 'showTitle:'; value: showTitleCheckbox state; yourself).
 
-    result add: (DdGenericProperties new
+    result add: (DdKeywordProperties new
         varName: varName; selector: 'showFrame:'; value: showFrameCheckbox state; yourself).
 
     self collectItemsPropertiesWith: varName into: result.

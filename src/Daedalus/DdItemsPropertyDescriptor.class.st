@@ -77,7 +77,7 @@ DdItemsPropertyDescriptor >> collectItemsPropertiesWith: varName into: result [
 "Appends a DdGenericProperties for items: to result if the items list is non-empty."
 
 	itemsList items ifNotEmpty: [ :items |
-			result add: (DdGenericProperties new
+			result add: (DdKeywordProperties new
 					 varName: varName;
 					 selector: 'items:';
 					 value: items asArray;

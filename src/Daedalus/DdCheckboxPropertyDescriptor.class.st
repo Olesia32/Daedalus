@@ -41,20 +41,18 @@ DdCheckboxPropertyDescriptor >> addSpecificFieldsTo: aPanel for: aPresenter [
 
 { #category : 'as yet unclassified' }
 DdCheckboxPropertyDescriptor >> collectPropertiesWithVarName: arg1 [
-"Collects style properties from super, appends a DdGenericProperties for state:, and prepends a DdTextProperties for the label if present."
+	"Collects style properties from super, appends a DdGenericProperties for state:, and prepends a DdTextProperties for the label if present."
 
 	| tmp1 tmp2 |
 	tmp1 := super collectPropertiesWithVarName: arg1.
-	tmp2 := DdGenericProperties new.
+	tmp2 := DdKeywordProperties new.
 	tmp2
 		varName: arg1;
 		selector: 'state:';
 		value: stateCheckbox state.
 	tmp1 add: tmp2 yourself.
 	labelInput text ifNotEmpty: [ :v |
-			tmp1 addFirst: (DdTextProperties new
-					 varName: arg1;
-					 text: v;
-					 yourself) ].
+    tmp1 addFirst: (DdKeywordProperties new
+        varName: arg1; selector: 'label:'; value: v; yourself) ].
 	^ tmp1
 ]

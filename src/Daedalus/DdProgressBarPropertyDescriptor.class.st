@@ -43,7 +43,7 @@ DdProgressBarPropertyDescriptor >> collectPropertiesWithVarName: arg1 [
 	tmp1 := super collectPropertiesWithVarName: arg1.
 	valueInput text ifNotEmpty: [ :arg2 |
 			| tmp3 |
-			tmp3 := DdGenericProperties new.
+			tmp3 := DdKeywordProperties new.
 			tmp3
 				varName: arg1;
 				selector: 'value:';

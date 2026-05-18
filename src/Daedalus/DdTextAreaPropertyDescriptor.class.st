@@ -43,16 +43,18 @@ DdTextAreaPropertyDescriptor >> collectPropertiesWithVarName: varName [
 	result := super collectPropertiesWithVarName: varName.
 
 	contentInput text ifNotEmpty: [ :v |
-			result addFirst: (DdGenericProperties new
+			result addFirst: (DdKeywordProperties new
 					 varName: varName;
 					 selector: 'text:';
 					 value: v;
 					 yourself) ].
 
 	result add: (DdUnaryProperties new
-	varName: varName;
-	selector: (wrapWordCheckbox state ifTrue: [ 'beWrapWord' ] ifFalse: [ 'beNotWrapWord' ]);
-	yourself).
+    varName: varName;
+    selector: (wrapWordCheckbox state ifTrue: [ 'beWrapWord' ] ifFalse: [ 'beNotWrapWord' ]);
+    oppositeSelector: (wrapWordCheckbox state ifTrue: [ 'beNotWrapWord' ] ifFalse: [ 'beWrapWord' ]);
+    state: true;
+    yourself).
 
 	^ result
 ]

@@ -81,30 +81,74 @@ DdBasePresenterPropertyDescriptor >> buildStylePanelFor: aPresenter [
 ]
 
 { #category : 'as yet unclassified' }
-DdBasePresenterPropertyDescriptor >> collectPropertiesWithVarName: arg1 [
-"Reads all style fields and returns a collection containing a single DdStyleProperties if at least one field was filled in."
+DdBasePresenterPropertyDescriptor >> collectPropertiesWithVarName: varName [
+	"Reads all style fields and returns a collection of DdGenericProperties and DdUnaryProperties, one per filled field."
 
-	| tmp1 tmp2 |
-	tmp1 := OrderedCollection new.
-	tmp2 := DdStyleProperties new.
-	tmp2 varName: arg1.
-	fontSizeInput text ifNotEmpty: [ :arg2 |
-		tmp2 at: 'fontSize:' put: arg2 asInteger ].
-	colorInput text ifNotEmpty: [ :arg3 | tmp2 at: 'color:' put: arg3 ].
-	backgroundColorInput text ifNotEmpty: [ :arg4 |
-		tmp2 at: 'backgroundColor:' put: arg4 ].
-	borderColorInput text ifNotEmpty: [ :arg5 |
-		tmp2 at: 'borderColor:' put: arg5 ].
-	borderWidthInput text ifNotEmpty: [ :arg6 |
-		tmp2 at: 'borderWidth:' put: arg6 asInteger ].
-	boldCheckbox state ifTrue: [ tmp2 at: 'bold' put: nil ].
-	italicCheckbox state ifTrue: [ tmp2 at: 'italic' put: nil ].
-	widthInput text ifNotEmpty: [ :arg7 |
-		tmp2 at: 'width:' put: arg7 asInteger ].
-	heightInput text ifNotEmpty: [ :arg8 |
-		tmp2 at: 'height:' put: arg8 asInteger ].
-	tmp2 properties ifNotEmpty: [ tmp1 add: tmp2 ].
-	^ tmp1
+	| result |
+	result := OrderedCollection new.
+
+	fontSizeInput text ifNotEmpty: [ :v |
+			result add: (DdKeywordProperties new
+					 varName: varName;
+					 selector: 'fontSize:';
+					 value: v asInteger;
+					 yourself) ].
+
+	colorInput text ifNotEmpty: [ :v |
+			result add: (DdKeywordProperties new
+					 varName: varName;
+					 selector: 'color:';
+					 value: v;
+					 yourself) ].
+
+	backgroundColorInput text ifNotEmpty: [ :v |
+			result add: (DdKeywordProperties new
+					 varName: varName;
+					 selector: 'backgroundColor:';
+					 value: v;
+					 yourself) ].
+
+	borderColorInput text ifNotEmpty: [ :v |
+			result add: (DdKeywordProperties new
+					 varName: varName;
+					 selector: 'borderColor:';
+					 value: v;
+					 yourself) ].
+
+	borderWidthInput text ifNotEmpty: [ :v |
+			result add: (DdKeywordProperties new
+					 varName: varName;
+					 selector: 'borderWidth:';
+					 value: v asInteger;
+					 yourself) ].
+
+	result add: (DdUnaryProperties new
+    varName: varName;
+    selector: 'bold';
+    state: boldCheckbox state;
+    yourself).
+
+result add: (DdUnaryProperties new
+    varName: varName;
+    selector: 'italic';
+    state: italicCheckbox state;
+    yourself).
+
+	widthInput text ifNotEmpty: [ :v |
+			result add: (DdKeywordProperties new
+					 varName: varName;
+					 selector: 'width:';
+					 value: v asInteger;
+					 yourself) ].
+
+	heightInput text ifNotEmpty: [ :v |
+			result add: (DdKeywordProperties new
+					 varName: varName;
+					 selector: 'height:';
+					 value: v asInteger;
+					 yourself) ].
+
+	^ result
 ]
 
 { #category : 'initialization' }

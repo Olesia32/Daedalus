@@ -34,14 +34,12 @@ DdButtonPropertyDescriptor >> addSpecificFieldsTo: aPanel for: aPresenter [
 
 { #category : 'as yet unclassified' }
 DdButtonPropertyDescriptor >> collectPropertiesWithVarName: varName [
-"Collects style properties from super, then prepends a DdTextProperties for the label if the label input is non-empty."
+	"Collects style properties from super, then prepends a DdTextProperties for the label if the label input is non-empty."
 
 	| result |
 	result := super collectPropertiesWithVarName: varName.
 	labelInput text ifNotEmpty: [ :v |
-			result addFirst: (DdTextProperties new
-					 varName: varName;
-					 text: v;
-					 yourself) ].
+    result addFirst: (DdKeywordProperties new
+        varName: varName; selector: 'label:'; value: v; yourself) ].
 	^ result
 ]

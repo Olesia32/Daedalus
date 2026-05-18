@@ -41,6 +41,6 @@ DdRadioGroupPropertyDescriptor >> addSelectionPropertiesTo: result varName: varN
         | idx |
         idx := v asInteger.
         idx > 0 ifTrue: [
-            result add: (DdGenericProperties new
+            result add: (DdKeywordProperties new
                 varName: varName; selector: 'itemSelected:'; value: idx; yourself) ] ]
 ]

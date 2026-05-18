@@ -45,7 +45,7 @@ DdComboboxPropertyDescriptor >> collectPropertiesWithVarName: varName [
     self collectItemsPropertiesWith: varName into: result.
     
     selectedIndexInput text ifNotEmpty: [ :v |
-        result add: (DdGenericProperties new
+        result add: (DdKeywordProperties new
             varName: varName;
             selector: 'selectIndex:';
             value: v asInteger;

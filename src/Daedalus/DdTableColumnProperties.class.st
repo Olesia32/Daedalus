@@ -51,7 +51,7 @@ DdTableColumnProperties >> patchSource: anAst [
         detect: [ :stmt | stmt isAssignment and: [ stmt variable name = varName ] ]
         ifNone: [ nil ].
     initNode ifNil: [ ^ anAst ].
-    newNode := RBParser parseExpression: varName
+    newNode := OCParser parseExpression: varName
         , ' addColumn: (SpStringTableColumn title: '
         , label printString
         , ' evaluated: [ :p | p at: '

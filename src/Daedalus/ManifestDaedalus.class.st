@@ -13,7 +13,7 @@ Class {
 ManifestDaedalus class >> ruleBadMessageRule2V1FalsePositive [
 
 	<ignoreForCoverage>
-	^ #(#(#(#RGMethodDefinition #(#'DdPropertyDescriptor class' #forPresenter: #true)) #'2026-05-17T12:13:21.811+03:00') )
+	^ #(#(#(#RGMethodDefinition #(#'DdPropertyDescriptor class' #forPresenter: #true)) #'2026-05-17T12:13:21.811+03:00') #(#(#RGMethodDefinition #(#DdCanvasPresenter #ddOnMouseDown: #false)) #'2026-05-17T18:50:35.496+03:00') #(#(#RGPackageDefinition #(#Daedalus)) #'2026-05-18T01:43:02.335+03:00') )
 ]
 
 { #category : 'code-critics' }

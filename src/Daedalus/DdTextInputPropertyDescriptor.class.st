@@ -38,10 +38,10 @@ DdTextInputPropertyDescriptor >> collectPropertiesWithVarName: varName [
     | result |
     result := super collectPropertiesWithVarName: varName.
     placeholderInput text ifNotEmpty: [ :v |
-        result add: (DdGenericProperties new
+        result add: (DdKeywordProperties new
             varName: varName; selector: 'placeholder:'; value: v; yourself) ].
     contentInput text ifNotEmpty: [ :v |
-        result addFirst: (DdGenericProperties new
+        result addFirst: (DdKeywordProperties new
             varName: varName; selector: 'text:'; value: v; yourself) ].
     ^ result
 

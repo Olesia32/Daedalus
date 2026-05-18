@@ -14,30 +14,40 @@ Class {
 	#name : 'DdUnaryProperties',
 	#superclass : 'DdPresenterProperties',
 	#instVars : [
-		'selector'
+		'selector',
+		'oppositeSelector',
+		'state'
 	],
 	#category : 'Daedalus-Daedalus-Services',
 	#package : 'Daedalus',
 	#tag : 'Daedalus-Services'
 }
 
-{ #category : 'operations' }
+{ #category : 'accessing' }
 DdUnaryProperties >> applyTo: aPresenter [ 
-	[ aPresenter perform: selector asSymbol ] on: Error do: [ ]
+    state
+        ifTrue: [ [ aPresenter perform: selector asSymbol ] on: Error do: [ ] ]
+        ifFalse: [  ]
 ]
 
-{ #category : 'translating' }
+{ #category : 'accessing' }
+DdUnaryProperties >> initialize [ 
+    super initialize.
+    state := true.
+    oppositeSelector := nil.
+]
+
+{ #category : 'accessing' }
+DdUnaryProperties >> oppositeSelector: aString [ 
+    oppositeSelector := aString
+]
+
+{ #category : 'accessing' }
 DdUnaryProperties >> patchSource: anAst [
-"Removes any existing call to selector or its known opposite from anAst, then inserts a fresh unary call after the variable's
-assignment node."
+	"Removes any existing call to selector or its opposite from anAst.
+    If state is true, inserts a fresh call after the variable's assignment node."
 
-	| oppositeSelector toRemove initNode newNode |
-	oppositeSelector := selector = 'beWrapWord'
-		                    ifTrue: [ 'beNotWrapWord' ]
-		                    ifFalse: [
-		                    selector = 'beNotWrapWord' ifTrue: [
-			                    'beWrapWord' ] ].
-
+	| toRemove initNode newNode |
 	toRemove := anAst body statements select: [ :stmt |
 			            stmt isMessage and: [
 					            stmt receiver isVariable and: [
@@ -45,17 +55,17 @@ assignment node."
 									            stmt selector = selector or: [
 										            oppositeSelector notNil and: [
 											            stmt selector = oppositeSelector ] ] ] ] ] ].
-
 	toRemove do: [ :node | anAst body removeNode: node ].
+
+	state ifFalse: [ ^ anAst ].
 
 	initNode := anAst body statements
 		            detect: [ :stmt |
 		            stmt isAssignment and: [ stmt variable name = varName ] ]
 		            ifNone: [ nil ].
-
 	initNode ifNil: [ ^ anAst ].
 
-	newNode := RBParser parseExpression: varName , ' ' , selector.
+	newNode := OCParser parseExpression: varName , ' ' , selector.
 	anAst body addNode: newNode after: initNode.
 	^ anAst
 ]
@@ -63,4 +73,9 @@ assignment node."
 { #category : 'accessing' }
 DdUnaryProperties >> selector: aString [ 
 	selector := aString
+]
+
+{ #category : 'accessing' }
+DdUnaryProperties >> state: aBoolean [ 
+    state := aBoolean
 ]

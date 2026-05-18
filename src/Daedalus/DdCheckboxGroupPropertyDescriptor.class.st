@@ -44,7 +44,7 @@ DdCheckboxGroupPropertyDescriptor >> addSelectionPropertiesTo: result varName: v
     selectionCheckboxes withIndexDo: [ :cb :i |
         cb state ifTrue: [ indexes add: i ] ].
     
-    result add: (DdGenericProperties new
+    result add: (DdKeywordProperties new
         varName: varName;
         selector: 'selectedIndexes:';
         value: indexes asArray;

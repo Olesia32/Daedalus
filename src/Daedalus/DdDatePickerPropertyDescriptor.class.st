@@ -36,7 +36,7 @@ DdDatePickerPropertyDescriptor >> collectPropertiesWithVarName: varName [
     result := super collectPropertiesWithVarName: varName.
 
     dateInput text ifNotEmpty: [ :v |
-        result add: (DdGenericProperties new
+        result add: (DdKeywordProperties new
             varName: varName; selector: 'date:'; value: v; yourself) ].
 
     ^ result

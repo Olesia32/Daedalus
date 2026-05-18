@@ -80,40 +80,40 @@ DdTimePickerPropertyDescriptor >> collectPropertiesWithVarName: varName [
 	result := super collectPropertiesWithVarName: varName.
 
 	hourInput text ifNotEmpty: [ :v |
-			result add: (DdGenericProperties new
+			result add: (DdKeywordProperties new
 					 varName: varName;
 					 selector: 'hour:';
 					 value: v asInteger;
 					 yourself) ].
 
 	minutesInput text ifNotEmpty: [ :v |
-			result add: (DdGenericProperties new
+			result add: (DdKeywordProperties new
 					 varName: varName;
 					 selector: 'minutes:';
 					 value: v asInteger;
 					 yourself) ].
 
 	okLabelInput text ifNotEmpty: [ :v |
-			result add: (DdGenericProperties new
+			result add: (DdKeywordProperties new
 					 varName: varName;
 					 selector: 'okButtonLabel:';
 					 value: v;
 					 yourself) ].
 
 	cancelLabelInput text ifNotEmpty: [ :v |
-			result add: (DdGenericProperties new
+			result add: (DdKeywordProperties new
 					 varName: varName;
 					 selector: 'cancelButtonLabel:';
 					 value: v;
 					 yourself) ].
 	mainColorInput text ifNotEmpty: [ :v |
-			result add: (DdGenericProperties new
+			result add: (DdKeywordProperties new
 					 varName: varName;
 					 selector: 'color:';
 					 value: v;
 					 yourself) ].
 	additionColorInput text ifNotEmpty: [ :v |
-			result add: (DdGenericProperties new
+			result add: (DdKeywordProperties new
 					 varName: varName;
 					 selector: 'additionColor:';
 					 value: v;

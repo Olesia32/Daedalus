@@ -74,7 +74,7 @@ DdAddWidgetService >> patchDefaultLayout: varName [
 		          sourceCodeAt: #defaultLayout
 		          ifAbsent: [ nil ].
 	source ifNil: [ ^ self ].
-	ast := RBParser parseMethod: source.
+	ast := OCParser parseMethod: source.
 
 	cascade := nil.
 	ast body nodesDo: [ :node |
@@ -110,13 +110,13 @@ DdAddWidgetService >> patchInitializePresenters: varName initExpression: anExpr 
 				, 'super initializePresenters.' , String cr , String tab , varName
 				, ' := ' , anExpr , '.'.
 			^ self ].
-	ast := RBParser parseMethod: source.
+	ast := OCParser parseMethod: source.
 	superCallNode := ast body statements
 		                 detect: [ :stmt |
 			                 stmt isMessage and: [
 				                 stmt selector = #initializePresenters ] ]
 		                 ifNone: [ ast body statements last ].
-	newNode := RBParser parseExpression: varName , ' := ' , anExpr.
+	newNode := OCParser parseExpression: varName , ' := ' , anExpr.
 	ast body addNode: newNode after: superCallNode.
 	presenterClass compile: ast formattedCode
 ]

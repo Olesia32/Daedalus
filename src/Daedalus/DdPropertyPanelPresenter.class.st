@@ -38,9 +38,8 @@ Class {
 { #category : 'layout' }
 DdPropertyPanelPresenter >> applyChanges [
 "Renames the variable if the name input changed, collects all edited properties via the descriptor, generates patched source
-via DdInitializeCodeBuilder, compiles it, applies properties to the live presenter, and triggers a canvas refresh."
-
-	| propsList builder source varName newVarName |
+via DdInitializeCodeBuilder, compiles it, applies properties to the live presenter, and triggers a canvas refresh for complex components."
+	| propsList builder source varName newVarName needsRefresh |
 	descriptor ifNil: [ ^ self ].
 	varName := self varNameForSubPresenter.
 	varName ifNil: [ ^ self ].
@@ -52,20 +51,19 @@ via DdInitializeCodeBuilder, compiles it, applies properties to the live present
 				to: newVarName.
 			varName := newVarName.
 			canvas designer codeEditor refreshCode ].
-
 	propsList := descriptor collectPropertiesWithVarName: varName.
 	propsList ifEmpty: [ ^ self ].
 	builder := DdInitializeCodeBuilder new
 		           presenterClass: editedClass
 		           properties: propsList.
 	source := builder generate.
+	needsRefresh := (descriptor isKindOf: DdGroupPropertyDescriptor)
+		or: [ descriptor isKindOf: DdComboboxPropertyDescriptor ].
 	(editedClass compile: source)
 		ifNil: [ self inform: 'Compilation error' ]
 		ifNotNil: [
 				propsList do: [ :props | props applyTo: subPresenter ].
-				canvas refreshPreview.
-				targetPresenter := canvas selectedPresenter.
-				subPresenter := canvas selectedSubPresenter ]
+				needsRefresh ifTrue: [ canvas refreshPreview ] ]
 ]
 
 { #category : 'as yet unclassified' }
