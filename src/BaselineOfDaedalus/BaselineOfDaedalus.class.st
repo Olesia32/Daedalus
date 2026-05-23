@@ -1,12 +1,12 @@
 Class {
-	#name : 'BaselinOfDaedalus',
+	#name : 'BaselineOfDaedalus',
 	#superclass : 'BaselineOf',
-	#category : 'BaselionOfDaedalus',
-	#package : 'BaselionOfDaedalus'
+	#category : 'BaselineOfDaedalus',
+	#package : 'BaselineOfDaedalus'
 }
 
 { #category : 'baselines' }
-BaselinOfDaedalus >> baseline: spec [ 
+BaselineOfDaedalus >> baseline: spec [ 
     <baseline>
     spec for: #common do: [
         spec package: 'Daedalus'.
@@ -14,7 +14,7 @@ BaselinOfDaedalus >> baseline: spec [
 ]
 
 { #category : 'as yet unclassified' }
-BaselinOfDaedalus >> patchSpNullApplication [ 
+BaselineOfDaedalus >> patchSpNullApplication [ 
     (SpNullApplication class includesSelector: #skipReset:) ifFalse: [
         SpNullApplication class compile: 
 'skipReset: aBoolean
