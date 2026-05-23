@@ -20,15 +20,21 @@ BaselineOfDaedalus >> baseline: spec [
 
 { #category : 'as yet unclassified' }
 BaselineOfDaedalus >> patchSpNullApplication [ 
+
+    (SpNullApplication classVarNames includes: #SkipReset) ifFalse: [
+        (RBAddClassVariableRefactoring 
+            variable: 'SkipReset' 
+            class: SpNullApplication) execute ].
+
     (SpNullApplication class includesSelector: #skipReset:) ifFalse: [
-        SpNullApplication class compile: 
-'skipReset: aBoolean
-    skipReset := aBoolean'
+        SpNullApplication class
+            compile: 'skipReset: aBoolean
+    SkipReset := aBoolean'
             classified: 'accessing' ].
-    
+
     (SpNullApplication class includesSelector: #skipReset) ifFalse: [
-        SpNullApplication class compile:
-'skipReset
-    ^ skipReset ifNil: [ false ]'
+        SpNullApplication class
+            compile: 'skipReset
+    ^ SkipReset ifNil: [ false ]'
             classified: 'accessing' ]
 ]
