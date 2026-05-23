@@ -38,13 +38,14 @@ DdDesignerPresenter class >> onPresenter: aPresenterClass [
 ]
 
 { #category : 'adding' }
-DdDesignerPresenter >> addWidget: aDescriptor [ 
-"Delegates to DdAddWidgetService, then refreshes the code editor and rebuilds the canvas preview."
-    DdAddWidgetService new
-        presenterClass: presenter;
-        addWidget: aDescriptor.
-    codeEditor refreshCode.
-    workArea rebuildPreview.
+DdDesignerPresenter >> addWidget: aDescriptor [
+	"Delegates to DdAddWidgetService, then refreshes the code editor and rebuilds the canvas preview."
+
+	DdAddWidgetService new
+		presenterClass: presenter;
+		addWidget: aDescriptor.
+	codeEditor refreshCode.
+	workArea refreshPreview 
 ]
 
 { #category : 'accessing' }

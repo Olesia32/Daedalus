@@ -10,7 +10,7 @@ Class {
 		'hobbyGroup',
 		'nameInputPresenter',
 		'agreeCheckBox',
-		'button1'
+		'checkBox'
 	],
 	#category : 'Daedalus-Daedalus-Examples',
 	#package : 'Daedalus',
@@ -24,6 +24,7 @@ DdTestPresenter >> defaultLayout [
 		  spacing: 10;
 		  add: titleLabel expand: false;
 		  add: nameInputPresenter expand: false;
+		  add: checkBox expand: false;
 		  add: agreeCheckBox expand: false;
 		  add: genderGroup expand: false;
 		  add: hobbyGroup expand: false;
@@ -36,6 +37,8 @@ DdTestPresenter >> defaultLayout [
 DdTestPresenter >> initializePresenters [
 
 	super initializePresenters.
+	checkBox := SpCheckBoxPresenter new.
+	checkBox label: 'Check'.
 
 	titleLabel := LabelPresenter new.
 	titleLabel fontSize: 10.

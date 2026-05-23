@@ -53,7 +53,9 @@ DdCanvasPresenter >> ddOnMouseDown: anEvent [
 				         (anEvent respondsTo: #wasHandled:) ifTrue: [
 					         anEvent wasHandled: true ].
 				         ^ self ].
-	result := model owner.
+	result := model owner == rootPreviewPresenter
+		          ifTrue: [ model ]
+		          ifFalse: [ model owner ].
 	result ifNil: [ ^ self ].
 	selectedPresenter := result.
 	(selectedPresenter owner isKindOf: RadioGroupPresenter) ifTrue: [
