@@ -34,6 +34,11 @@ DdLayoutCodeEditorPresenter >> classToEdit: aClass [
     codeEditor beForBehavior: aClass.
 ]
 
+{ #category : 'accessing' }
+DdLayoutCodeEditorPresenter >> currentText [
+	^ codeEditor text
+]
+
 { #category : 'layout' }
 DdLayoutCodeEditorPresenter >> defaultLayout [
 

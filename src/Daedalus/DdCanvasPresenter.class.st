@@ -23,7 +23,8 @@ Class {
 		'rootPreviewPresenter',
 		'presenterIndex',
 		'selectedPresenter',
-		'designer'
+		'designer',
+		'selectionOverlay'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -36,6 +37,13 @@ DdCanvasPresenter class >> onPresenter: aPresenter [
 ^ self new
         editedPresenter: aPresenter;
         yourself.
+]
+
+{ #category : 'as yet unclassified' }
+DdCanvasPresenter >> clearOverlay [
+    selectionOverlay ifNotNil: [ 
+        selectionOverlay delete.
+        selectionOverlay := nil ].
 ]
 
 { #category : 'as yet unclassified' }
@@ -167,27 +175,28 @@ installation after two UI cycles."
 
 { #category : 'accessing' }
 DdCanvasPresenter >> refreshPreview [
-"Re-runs initializePresenters and defaultLayout on the existing root preview instance, rebuilds the index, restores the previously
+	"Re-runs initializePresenters and defaultLayout on the existing root preview instance, rebuilds the index, restores the previously
 selected presenters by variable name, and reinstalls click hooks."
 
 	| subVarName presenterVarName |
-    subVarName := selectedPresenter ifNotNil: [
-        self instVarNameForPresenterInRoot: selectedPresenter ].
+	subVarName := selectedPresenter ifNotNil: [
+		              self instVarNameForPresenterInRoot: selectedPresenter ].
 
-    SpNullApplication skipReset: true.
-    [
-        rootPreviewPresenter initializePresenters.
-        rootPreviewPresenter layout: rootPreviewPresenter defaultLayout.
-    ] ensure: [ SpNullApplication skipReset: false ].
+	SpNullApplication skipReset: true.
+	[
+		rootPreviewPresenter initializePresenters.
+		rootPreviewPresenter layout: rootPreviewPresenter defaultLayout ]
+		ensure: [ SpNullApplication skipReset: false ].
 
-    subVarName ifNotNil: [
-        | idx |
-        idx := rootPreviewPresenter class allInstVarNames indexOf: subVarName.
-        idx > 0 ifTrue: [
-            selectedPresenter := rootPreviewPresenter instVarAt: idx ] ].
+	subVarName ifNotNil: [
+			| idx |
+			idx := rootPreviewPresenter class allInstVarNames indexOf:
+				       subVarName.
+			idx > 0 ifTrue: [
+				selectedPresenter := rootPreviewPresenter instVarAt: idx ] ].
 
-        self installClickHooks.
-        designer ifNotNil: [ designer onSelectionChanged ]
+	self installClickHooks.
+	designer ifNotNil: [ designer onSelectionChanged ]
 ]
 
 { #category : 'accessing' }
@@ -196,8 +205,41 @@ DdCanvasPresenter >> rootPreviewPresenter [
 	^ rootPreviewPresenter
 ]
 
+{ #category : 'selection' }
+DdCanvasPresenter >> selectWidgetNamed: aVarName [
+	"Makes the widget held in the root preview's variable aVarName the canvas selection
+	(the same state a click on it produces). Answers false when there is no such variable or it is empty."
+
+	| index widget |
+	index := (rootPreviewPresenter class allInstVarNames collect: [ :each |
+		          each asString ]) indexOf: aVarName asString.
+	index = 0 ifTrue: [ ^ false ].
+	widget := rootPreviewPresenter instVarAt: index.
+	widget ifNil: [ ^ false ].
+	selectedPresenter := widget.
+	^ true
+]
+
 { #category : 'accessing' }
 DdCanvasPresenter >> selectedPresenter [
 
 	^ selectedPresenter
+]
+
+{ #category : 'accessing' }
+DdCanvasPresenter >> showOverlayFor: aMorph [
+    | world morphBounds |
+    selectionOverlay ifNotNil: [ selectionOverlay delete ].
+    world := self adapter ifNotNil: [ :a | a widget world ] ifNil: [ nil ].
+    world ifNil: [ ^ self ].
+    morphBounds := aMorph bounds.
+    selectionOverlay := DdSelectionOverlayMorph new
+        initializeFor: aMorph.
+    selectionOverlay bounds: morphBounds.
+    world addMorph: selectionOverlay.
+]
+
+{ #category : 'as yet unclassified' }
+DdCanvasPresenter >> updateOverlay [
+    selectionOverlay ifNotNil: [ selectionOverlay update ]
 ]

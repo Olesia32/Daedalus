@@ -22,7 +22,9 @@ Class {
 		'workArea',
 		'propertyPanel',
 		'codeEditor',
-		'footerBar'
+		'footerBar',
+		'componentTree',
+		'syncingSelection'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -39,18 +41,25 @@ DdDesignerPresenter class >> onPresenter: aPresenterClass [
 
 { #category : 'adding' }
 DdDesignerPresenter >> addWidget: aDescriptor [
-	"Delegates to DdAddWidgetService, then refreshes the code editor and rebuilds the canvas preview."
+	"Delegates to DdAddWidgetService, then refreshes the code editor, the component tree and the canvas preview."
 
 	DdAddWidgetService new
 		presenterClass: presenter;
 		addWidget: aDescriptor.
 	codeEditor refreshCode.
-	workArea refreshPreview 
+	componentTree refresh.
+	workArea refreshPreview
 ]
 
 { #category : 'accessing' }
 DdDesignerPresenter >> codeEditor [ 
 ^ codeEditor 
+]
+
+{ #category : 'accessing' }
+DdDesignerPresenter >> componentTree [
+
+	^ componentTree
 ]
 
 { #category : 'layout' }
@@ -62,11 +71,15 @@ DdDesignerPresenter >> defaultLayout [
 				   spacing: 20;
 				   add: widgetPalette width: 150;
 				   add: workArea;
-				   add: propertyPanel width: 200;
+				   add: (SpBoxLayout newTopToBottom
+						    spacing: 10;
+						    add: componentTree height: 220;
+						    add: propertyPanel;
+						    yourself)
+				   width: 250;
 				   yourself);
 		  add: codeEditor height: 150;
-		  yourself.
-		
+		  yourself
 ]
 
 { #category : 'initialization' }
@@ -74,8 +87,42 @@ DdDesignerPresenter >> initializePresenters [
 
 	widgetPalette := DdWidgetPalettePresenter new.
 	codeEditor := DdLayoutCodeEditorPresenter new.
-	workArea      := SpPresenter new.
-    propertyPanel := SpPresenter new.
+	workArea := SpPresenter new.
+	propertyPanel := SpPresenter new.
+	componentTree := DdComponentTreePresenter new.
+	componentTree whenNodeSelectedDo: [ :node |
+		self onTreeNodeSelected: node ]
+]
+
+{ #category : 'selection' }
+DdDesignerPresenter >> keepSyncingWhile: aBlock [
+	"Selection events caused by the synchronisation itself must not start it again."
+
+	syncingSelection := true.
+	aBlock ensure: [ syncingSelection := false ]
+]
+
+{ #category : 'selection' }
+DdDesignerPresenter >> onCanvasClicked [
+	"canvas -> tree: after a click on the canvas, select the matching widget in the tree."
+
+	| varName node |
+	workArea selectedPresenter ifNil: [ ^ self ].
+	varName := workArea instVarNameForPresenterInRoot:
+		           workArea selectedPresenter.
+	varName ifNil: [ ^ self ].
+	node := componentTree rootNode ifNotNil: [ :root |
+		        root findWidgetNamed: varName ].
+	node ifNil: [ ^ self ].
+	self keepSyncingWhile: [ componentTree selectNodeAtPath: node path ]
+]
+
+{ #category : 'actions' }
+DdDesignerPresenter >> onLayoutEdited [
+	"Called by the component tree after it has recompiled defaultLayout of the edited class."
+
+	codeEditor refreshCode.
+	workArea refreshPreview
 ]
 
 { #category : 'accessing' }
@@ -98,9 +145,26 @@ and rebuilds the layout."
 	codeEditor highlightVarName: varName
 ]
 
+{ #category : 'selection' }
+DdDesignerPresenter >> onTreeNodeSelected: aNode [
+	"tree -> canvas: a widget selected in the tree becomes the canvas selection.
+	Containers and unsupported nodes do not exist on the canvas, so they change nothing."
+
+	| path varName |
+	syncingSelection == true ifTrue: [ ^ self ].
+	(aNode notNil and: [ aNode isWidgetNode ]) ifFalse: [ ^ self ].
+	path := aNode path.
+	varName := aNode varName.
+	UIManager default defer: [
+			self keepSyncingWhile: [
+					(workArea selectWidgetNamed: varName) ifTrue: [
+							self onSelectionChanged.
+							componentTree selectNodeAtPath: path ] ] ]
+]
+
 { #category : 'initialization' }
 DdDesignerPresenter >> presenterClass: aClass [
-	"Initialises all sub-presenters, wires the canvas and code editor to this designer, and installs click hooks on the work area."
+	"Initialises all sub-presenters, wires the canvas, the code editor and the component tree to this designer."
 
 	presenter := aClass.
 	workArea := DdCanvasPresenter onPresenter: presenter new.
@@ -108,31 +172,22 @@ DdDesignerPresenter >> presenterClass: aClass [
 	codeEditor classToEdit: presenter.
 	codeEditor designer: self.
 	widgetPalette designer: self.
+	componentTree presenterClass: presenter.
+	componentTree whenLayoutChangedDo: [ self onLayoutEdited ].
 	propertyPanel := DdPropertyPanelPresenter new.
 	propertyPanel
 		target: nil
 		subPresenter: nil
 		onClass: nil
-		canvas: workArea.
+		canvas: workArea
 ]
 
 { #category : 'private' }
 DdDesignerPresenter >> rebuildLayout [
-	"Rebuilds the top-level SpBoxLayout combining palette, canvas, property panel and code editor, then defers click hook reinstall."
+	"Rebuilds the top-level layout (palette, canvas, component tree, property panel, code editor), then reinstalls click hooks."
 
-	| newLayout |
-	newLayout := SpBoxLayout newTopToBottom
-		             spacing: 10;
-		             add: (SpBoxLayout newLeftToRight
-				              spacing: 20;
-				              add: widgetPalette width: 150;
-				              add: workArea;
-				              add: propertyPanel width: 250;
-				              yourself);
-		             add: codeEditor height: 150;
-		             yourself.
-	self layout: newLayout.
-	 workArea installClickHooks
+	self layout: self defaultLayout.
+	workArea installClickHooks
 ]
 
 { #category : 'accessing' }
