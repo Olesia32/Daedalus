@@ -48,7 +48,6 @@ DdCanvasPresenter >> clearOverlay [
 
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> ddOnMouseDown: anEvent [
-
 	| model result handler |
 	handler := anEvent handler.
 	model := [ handler model model ]
@@ -57,7 +56,10 @@ DdCanvasPresenter >> ddOnMouseDown: anEvent [
 				         result := self presenterFromMorphWithoutModel: handler.
 				         result ifNil: [ ^ self ].
 				         selectedPresenter := result owner ifNil: [ result ].
-				         designer ifNotNil: [ designer onSelectionChanged ].
+				         designer ifNotNil: [
+						         designer
+							         onSelectionChanged;
+							         onCanvasClicked ].
 				         (anEvent respondsTo: #wasHandled:) ifTrue: [
 					         anEvent wasHandled: true ].
 				         ^ self ].
@@ -70,7 +72,10 @@ DdCanvasPresenter >> ddOnMouseDown: anEvent [
 		selectedPresenter := selectedPresenter owner ].
 	(selectedPresenter owner isKindOf: CheckboxGroupPresenter) ifTrue: [
 		selectedPresenter := selectedPresenter owner ].
-	designer ifNotNil: [ designer onSelectionChanged ].
+	designer ifNotNil: [
+			designer
+				onSelectionChanged;
+				onCanvasClicked ].
 	(anEvent respondsTo: #wasHandled:) ifTrue: [
 		anEvent wasHandled: true ]
 ]

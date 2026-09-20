@@ -142,6 +142,24 @@ DdLayoutEditorTest >> testInsertWidgetIntoNestedBox [
 ]
 
 { #category : 'tests' }
+DdLayoutEditorTest >> testMoveDown [
+	| e |
+	e := self editor moveDownAt: #( 1 ).
+	self assertTree: e equals: {
+			self rootRow.
+			(self bRow: 1).
+			(self aRow: 1).
+			(self boxRow: 1).
+			(self cRow: 2).
+			(self dRow: 2) }
+]
+
+{ #category : 'tests' }
+DdLayoutEditorTest >> testMoveDownLastChildFails [
+	self should: [ self editor moveDownAt: #( 3 ) ] raise: Error
+]
+
+{ #category : 'tests' }
 DdLayoutEditorTest >> testMoveIntoItselfFails [
 	self
 		should: [ self editor moveAt: #( 3 ) toBoxAt: #( 3 ) index: 1 ]

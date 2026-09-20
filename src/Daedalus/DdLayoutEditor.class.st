@@ -10,6 +10,18 @@ Class {
 	#tag : 'Daedalus-LayoutModel'
 }
 
+{ #category : 'instance creation' }
+DdLayoutEditor class >> forClass: aClass [
+	(aClass includesSelector: #defaultLayout) ifFalse: [
+		^ self error: aClass name , ' has no defaultLayout of its own' ].
+	^ self on: (aClass >> #defaultLayout) sourceCode
+]
+
+{ #category : 'instance creation' }
+DdLayoutEditor class >> on: aSourceString [
+	^ self new setSource: aSourceString
+]
+
 { #category : 'applying' }
 DdLayoutEditor >> applyTo: aClass [
 "Compiles the edited source as defaultLayout of aClass. Refuses to compile when the
