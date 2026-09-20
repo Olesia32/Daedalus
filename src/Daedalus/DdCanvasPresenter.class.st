@@ -163,19 +163,19 @@ DdCanvasPresenter >> presenterIndex [
 
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> rebuildPreview [
-"Instantiates a fresh preview from editedPresenter, rebuilds the presenter index, updates the layout, and schedules click hook
+	"Instantiates a fresh preview from editedPresenter, rebuilds the presenter index, updates the layout, and schedules click hook
 installation after two UI cycles."
 
-	 | newPresenter |
-    newPresenter := editedPresenter class new.
-    newPresenter build.
-    rootPreviewPresenter := newPresenter.
+	| newPresenter |
+	newPresenter := editedPresenter class new.
+	newPresenter build.
+	rootPreviewPresenter := newPresenter.
 
-    self layout: (SpBoxLayout new
+	    self layout: (SpBoxLayout new
         spacing: 30;
         add: rootPreviewPresenter;
         yourself).
-    self installClickHooks 
+	self installClickHooks
 ]
 
 { #category : 'accessing' }
@@ -231,6 +231,25 @@ DdCanvasPresenter >> selectedPresenter [
 	^ selectedPresenter
 ]
 
+{ #category : 'selection' }
+DdCanvasPresenter >> selectedWidgetMorph [
+	"The morph of the widget selected on the canvas, or nil."
+
+	^ selectedPresenter ifNotNil: [ :each |
+		  each adapter ifNotNil: [ :anAdapter | anAdapter widget ] ]
+]
+
+{ #category : 'selection' }
+DdCanvasPresenter >> selectionOverlay [
+	"The glass that frames the selected widget. It lives in the Morphic world, like halos, not in the
+	layout of the preview: an extra morph inside a Spec layout breaks its calculators."
+
+	^ selectionOverlay ifNil: [
+			  selectionOverlay := DdSelectionGlassMorph new
+				                      targetProvider: [ self selectedWidgetMorph ];
+				                      yourself ]
+]
+
 { #category : 'accessing' }
 DdCanvasPresenter >> showOverlayFor: aMorph [
     | world morphBounds |
@@ -247,4 +266,14 @@ DdCanvasPresenter >> showOverlayFor: aMorph [
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> updateOverlay [
     selectionOverlay ifNotNil: [ selectionOverlay update ]
+]
+
+{ #category : 'selection' }
+DdCanvasPresenter >> updateSelectionOverlay [
+"Makes sure the selection frame is on screen; it then follows the selection by itself."
+
+	| world |
+	world := self adapter ifNotNil: [ :anAdapter |
+		         anAdapter widget ifNotNil: [ :morph | morph world ] ].
+	self selectionOverlay showIn: world
 ]

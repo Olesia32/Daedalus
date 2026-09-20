@@ -74,7 +74,7 @@ DdTestPresenter >> initializePresenters [
 	hobbyGroup items: #('Cooking' 'Traveling' 'Programming' 'Running').
 	hobbyGroup selectedIndexes: #(1 2).
 	hobbyGroup showFrame: false.
-	hobbyGroup showTitle: true.
+	hobbyGroup showTitle: false.
 	hobbyGroup сolumnCount: 2.
 	hobbyGroup title: 'Hobby'
 ]

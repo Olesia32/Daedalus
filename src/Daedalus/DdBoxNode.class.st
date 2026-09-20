@@ -80,6 +80,18 @@ DdBoxNode >> insertChild: aNode at: anIndex [
 	^ aNode
 ]
 
+{ #category : 'testing' }
+DdBoxNode >> isContainerNode [
+	^ true
+]
+
+{ #category : 'testing' }
+DdBoxNode >> isHorizontal [
+"SpBoxLayout new and SpPanedLayout new are vertical."
+
+	^ #( #newLeftToRight #newHorizontal ) includes: factorySelector
+]
+
 { #category : 'labels' }
 DdBoxNode >> kindLabel [
 

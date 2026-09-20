@@ -142,7 +142,8 @@ and rebuilds the layout."
 
 	varName := workArea instVarNameForPresenterInRoot: selected.
 	self rebuildLayout.
-	codeEditor highlightVarName: varName
+	codeEditor highlightVarName: varName.
+	workArea updateSelectionOverlay
 ]
 
 { #category : 'selection' }

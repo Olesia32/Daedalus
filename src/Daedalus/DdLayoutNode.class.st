@@ -88,6 +88,11 @@ DdLayoutNode >> findWidgetNamed: aString [
 ]
 
 { #category : 'testing' }
+DdLayoutNode >> isContainerNode [
+	^ false
+]
+
+{ #category : 'testing' }
 DdLayoutNode >> isDescendantOf: aNode [
 	| current |
 	current := parent.
@@ -112,6 +117,13 @@ DdLayoutNode >> labelForMessage: aMessage [
 			    (aMessage arguments collect: [ :each | each formattedCode ])
 			    collect: [ :keyword :value | keyword , ' ' , value ]))
 		  withSeparatorsCompacted
+]
+
+{ #category : 'navigation' }
+DdLayoutNode >> nodeAtPath: aPath [
+"The node reached from the receiver through the child indexes in aPath."
+
+	^ aPath inject: self into: [ :node :i | node children at: i ]
 ]
 
 { #category : 'accessing' }
