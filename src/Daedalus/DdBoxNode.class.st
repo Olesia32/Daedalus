@@ -23,6 +23,11 @@ DdBoxNode >> addPropertyMessage: aMessage [
 	propertyMessages add: aMessage
 ]
 
+{ #category : 'testing' }
+DdBoxNode >> canAcceptChild [
+	^ true
+]
+
 { #category : 'accessing' }
 DdBoxNode >> cascade [
 	^ cascade
@@ -57,16 +62,14 @@ DdBoxNode >> initialize [
 
 { #category : 'editing' }
 DdBoxNode >> insertChild: aNode at: anIndex [
-"aNode carries an addMessage (possibly detached); a fresh message with the same
-selector and arguments is attached to this box's cascade."
+	"aNode carries an addMessage (possibly detached); a fresh message is attached to this container's cascade."
 
 	| message |
+	self canAcceptChild ifFalse: [
+		^ self error: 'This container cannot hold more children' ].
 	(anIndex between: 1 and: children size + 1) ifFalse: [
 		^ self error: 'Index out of range' ].
-	message := OCMessageNode
-		           receiver: cascade receiver copy
-		           selector: aNode addSelector
-		           arguments: aNode addMessage arguments asArray.
+	message := self newAddMessageFor: aNode.
 	message parent: cascade.
 	cascade messages
 		add: message
@@ -75,6 +78,14 @@ selector and arguments is attached to this box's cascade."
 	aNode parent: self.
 	children add: aNode beforeIndex: anIndex.
 	^ aNode
+]
+
+{ #category : 'labels' }
+DdBoxNode >> kindLabel [
+
+	factorySelector = #newLeftToRight ifTrue: [ ^ 'Horizontal box' ].
+	factorySelector = #newTopToBottom ifTrue: [ ^ 'Vertical box' ].
+	^ 'Box'
 ]
 
 { #category : 'editing' }
@@ -91,6 +102,17 @@ DdBoxNode >> messageIndexForInsertionAt: anIndex [
 	^ yourselfIndex = 0
 		  ifTrue: [ messages size + 1 ]
 		  ifFalse: [ yourselfIndex ]
+]
+
+{ #category : 'editing' }
+DdBoxNode >> newAddMessageFor: aNode [
+	"The message that will insert aNode into this container's cascade.
+	A plain box keeps the selector and arguments (constraints) of the node's own add-message."
+
+	^ OCMessageNode
+		  receiver: cascade receiver copy
+		  selector: aNode addSelector
+		  arguments: aNode addMessage arguments asArray
 ]
 
 { #category : 'printing' }
@@ -126,19 +148,15 @@ DdBoxNode >> removeChild: aNode [
 
 { #category : 'labels' }
 DdBoxNode >> treeLabel [
-	| kind props constraints label |
-	kind := factorySelector = #newLeftToRight
-		        ifTrue: [ 'Horizontal box' ]
-		        ifFalse: [
-				        factorySelector = #newTopToBottom
-					        ifTrue: [ 'Vertical box' ]
-					        ifFalse: [ 'Box' ] ].
+
+	| props constraints label |
 	props := propertyMessages collect: [ :each |
 		         self labelForMessage: each ].
 	constraints := self constraintsLabel.
 	label := props isEmpty
-		         ifTrue: [ kind ]
-		         ifFalse: [ kind , ' (' , (', ' join: props) , ')' ].
+		         ifTrue: [ self kindLabel ]
+		         ifFalse: [
+		         self kindLabel , ' (' , (', ' join: props) , ')' ].
 	^ constraints isEmpty
 		  ifTrue: [ label ]
 		  ifFalse: [ label , ' [' , constraints , ']' ]
