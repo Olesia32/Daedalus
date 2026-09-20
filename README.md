@@ -39,3 +39,14 @@ The designer consists of four main areas:
 - Layout Editor
 
 Daedalus modifies `initializePresenters` and `defaultLayout` methods directly using AST transformations.
+
+## Installation
+
+Daedalus depends on [SpecComponentsLibrary](https://github.com/Olesia32/pharo-spec-components). Both are loaded automatically via Metacello.
+
+```smalltalk
+Metacello new
+    baseline: 'Daedalus';
+    repository: 'github://Olesia32/Daedalus:master/src';
+    load.
+```
