@@ -105,11 +105,16 @@ DdLayoutParser >> parseExpression: anExpression addMessage: aMessage [
 
 { #category : 'parsing' }
 DdLayoutParser >> parseMethodNode: aMethodNode [
-	| return |
+	| return expression reconstructedSource |
 	return := aMethodNode body statements
 		          detect: [ :each | each isReturn ]
 		          ifNone: [ ^ nil ].
-	^ self parseExpression: return value addMessage: nil
+	expression := return value.
+	reconstructedSource := DdCascadeReconstructor
+		                       reconstructedRootSourceFor: aMethodNode.
+	reconstructedSource ifNotNil: [
+		expression := OCParser parseExpression: reconstructedSource ].
+	^ self parseExpression: expression addMessage: nil
 ]
 
 { #category : 'parsing' }

@@ -24,7 +24,8 @@ Class {
 		'codeEditor',
 		'footerBar',
 		'componentTree',
-		'syncingSelection'
+		'syncingSelection',
+		'dragController'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -39,6 +40,34 @@ DdDesignerPresenter class >> onPresenter: aPresenterClass [
      yourself 
 ]
 
+{ #category : 'dragging' }
+DdDesignerPresenter >> addPaletteWidget: aDescriptor into: aContainerPath at: anIndex [
+"Adds a new widget of aDescriptor at that place of the layout."
+
+	| varName |
+	"a dry run first: a refusal must not leave a new variable behind"
+	[
+		(DdLayoutEditor forClass: presenter)
+			insertWidget: 'dryRunWidget'
+			into: aContainerPath
+			at: anIndex ]
+		on: Error
+		do: [ :error | ^ componentTree notifyUser: error messageText ].
+	varName := DdAddWidgetService new
+		           presenterClass: presenter;
+		           addVariableFor: aDescriptor.
+	[
+		(DdLayoutEditor forClass: presenter)
+			insertWidget: varName into: aContainerPath at: anIndex;
+			applyTo: presenter ]
+		on: Error
+		do: [ :error | ^ componentTree notifyUser: error messageText ].
+	codeEditor refreshCode.
+	componentTree refresh.
+	componentTree selectNodeAtPath: aContainerPath , { anIndex }.
+	workArea refreshPreview
+]
+
 { #category : 'adding' }
 DdDesignerPresenter >> addWidget: aDescriptor [
 	"Delegates to DdAddWidgetService, then refreshes the code editor, the component tree and the canvas preview."
@@ -49,6 +78,19 @@ DdDesignerPresenter >> addWidget: aDescriptor [
 	codeEditor refreshCode.
 	componentTree refresh.
 	workArea refreshPreview
+]
+
+{ #category : 'dragging' }
+DdDesignerPresenter >> canvasMap [
+	"The map of the current preview, or nil when it cannot be trusted (it would mislead a drop)."
+
+	| root map |
+	root := componentTree rootNode.
+	root ifNil: [ ^ nil ].
+	map := DdCanvasMap
+		       presenter: workArea rootPreviewPresenter
+		       model: root.
+	^ map isComplete ifTrue: [ map ]
 ]
 
 { #category : 'accessing' }
@@ -82,6 +124,27 @@ DdDesignerPresenter >> defaultLayout [
 		  yourself
 ]
 
+{ #category : 'dragging' }
+DdDesignerPresenter >> dragController [
+
+	^ dragController ifNil: [
+			  dragController := DdDragController for: self.
+			  dragController install.
+			  dragController ]
+]
+
+{ #category : 'dragging' }
+DdDesignerPresenter >> dragDropped: aPath on: aDropTarget [
+"The hand is still reporting the mouse up when this is called: the move rebuilds the preview,
+so it waits for the next UI cycle."
+
+	UIManager default defer: [
+			componentTree
+				moveNodeAt: aPath
+				into: aDropTarget containerPath
+				at: aDropTarget index ]
+]
+
 { #category : 'initialization' }
 DdDesignerPresenter >> initializePresenters [
 
@@ -91,7 +154,9 @@ DdDesignerPresenter >> initializePresenters [
 	propertyPanel := SpPresenter new.
 	componentTree := DdComponentTreePresenter new.
 	componentTree whenNodeSelectedDo: [ :node |
-		self onTreeNodeSelected: node ]
+		self onTreeNodeSelected: node ].
+	"listens to the mouse from the start, so that a drag from the palette is possible before any canvas click"
+	self dragController
 ]
 
 { #category : 'selection' }
@@ -104,7 +169,8 @@ DdDesignerPresenter >> keepSyncingWhile: aBlock [
 
 { #category : 'selection' }
 DdDesignerPresenter >> onCanvasClicked [
-	"canvas -> tree: after a click on the canvas, select the matching widget in the tree."
+"canvas -> tree: after a click on the canvas, select the matching widget in the tree.
+The pressed widget also becomes a candidate for dragging."
 
 	| varName node |
 	workArea selectedPresenter ifNil: [ ^ self ].
@@ -114,7 +180,8 @@ DdDesignerPresenter >> onCanvasClicked [
 	node := componentTree rootNode ifNotNil: [ :root |
 		        root findWidgetNamed: varName ].
 	node ifNil: [ ^ self ].
-	self keepSyncingWhile: [ componentTree selectNodeAtPath: node path ]
+	self keepSyncingWhile: [ componentTree selectNodeAtPath: node path ].
+	self dragController pressedOnPath: node path
 ]
 
 { #category : 'actions' }
@@ -127,22 +194,19 @@ DdDesignerPresenter >> onLayoutEdited [
 
 { #category : 'accessing' }
 DdDesignerPresenter >> onSelectionChanged [
-	"Resolves the selected presenter, wraps group presenters in their owner, builds a fresh DdPropertyPanelPresenter for the selection,
-and rebuilds the layout."
 
-	| selected varName |
-	selected := workArea selectedPresenter.
-	selected ifNil: [ ^ self ].
+	| tmp1 tmp2 |
+	tmp1 := workArea selectedPresenter.
+	tmp1 ifNil: [ ^ self ] ifNotNil: [ tmp1 ].
 	propertyPanel := DdPropertyPanelPresenter new.
 	propertyPanel
-		target: selected owner
-		subPresenter: selected
-		onClass: selected owner class
+		target: tmp1 owner
+		subPresenter: tmp1
+		onClass: tmp1 owner class
 		canvas: workArea.
-
-	varName := workArea instVarNameForPresenterInRoot: selected.
+	tmp2 := workArea instVarNameForPresenterInRoot: tmp1.
 	self rebuildLayout.
-	codeEditor highlightVarName: varName.
+	codeEditor highlightVarName: tmp2.
 	workArea updateSelectionOverlay
 ]
 
@@ -161,6 +225,28 @@ DdDesignerPresenter >> onTreeNodeSelected: aNode [
 					(workArea selectWidgetNamed: varName) ifTrue: [
 							self onSelectionChanged.
 							componentTree selectNodeAtPath: path ] ] ]
+]
+
+{ #category : 'dragging' }
+DdDesignerPresenter >> paletteContainsPoint: aPoint [
+	^ widgetPalette containsWorldPoint: aPoint
+]
+
+{ #category : 'dragging' }
+DdDesignerPresenter >> paletteDragDescriptor [
+
+	^ widgetPalette selectedDescriptor
+]
+
+{ #category : 'dragging' }
+DdDesignerPresenter >> paletteDropped: aDescriptor on: aDropTarget [
+"Like dragDropped:on:, the hand is still busy: the work waits for the next UI cycle."
+
+	UIManager default defer: [
+			self
+				addPaletteWidget: aDescriptor
+				into: aDropTarget containerPath
+				at: aDropTarget index ]
 ]
 
 { #category : 'initialization' }

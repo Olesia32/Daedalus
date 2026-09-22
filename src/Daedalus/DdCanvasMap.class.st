@@ -120,3 +120,21 @@ DdCanvasMap >> morphOf: aLiveItem [
 		ifFalse: [ ^ nil ].
 	^ aLiveItem adapter ifNotNil: [ :anAdapter | anAdapter widget ]
 ]
+
+{ #category : 'finding' }
+DdCanvasMap >> nodeAtPoint: aPoint [
+"Deepest node whose morph's world bounds contain aPoint, or nil. The reverse of boundsAt:."
+
+	| best bestDepth |
+	best := nil.
+	bestDepth := -1.
+	root ifNil: [ ^ nil ].
+	root allNodesDo: [ :node |
+			| b |
+			b := self boundsAt: node path.
+			(b notNil and: [ b containsPoint: aPoint ]) ifTrue: [
+					node path size > bestDepth ifTrue: [
+							best := node.
+							bestDepth := node path size ] ] ].
+	^ best ifNotNil: [ :n | n path ]
+]

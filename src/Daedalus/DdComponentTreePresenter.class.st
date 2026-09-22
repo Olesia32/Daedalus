@@ -158,6 +158,23 @@ DdComponentTreePresenter >> initializeWindow: aWindowPresenter [
 ]
 
 { #category : 'actions' }
+DdComponentTreePresenter >> moveNodeAt: aSourcePath into: aContainerPath at: anIndex [
+"Moves the node at aSourcePath into the container at aContainerPath (position anIndex among its
+children once the node has been taken out) and selects it at its new place."
+
+	| node |
+	node := rootNode ifNotNil: [ :root |
+			        [ root nodeAtPath: aSourcePath ]
+				        on: Error
+				        do: [ nil ] ].
+	node ifNil: [
+		^ self notifyUser: 'The tree is out of date - press Refresh' ].
+	self editNode: node with: [ :editor :path |
+			editor moveAt: path toBoxAt: aContainerPath index: anIndex.
+			DdLayoutEditor movedPathFor: path into: aContainerPath at: anIndex ]
+]
+
+{ #category : 'actions' }
 DdComponentTreePresenter >> moveSelectionDown [
 	self editSelection: [ :editor :path |
 			editor moveDownAt: path.

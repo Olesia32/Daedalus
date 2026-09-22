@@ -141,6 +141,38 @@ DdCanvasPresenter >> installClickHooks [
 ]
 
 { #category : 'as yet unclassified' }
+DdCanvasPresenter >> installInteractionOverlay [
+	"Spike/slice-12 wiring: builds a fresh DdCanvasMap and drops a single DdInteractionOverlayMorph
+on top of the preview window, replacing per-widget mouseDown hooks for selection/drag purposes.
+onSelect:/onDrop: are left as simple logging for now; slice 13 wires onDrop: to
+DdLayoutEditor moveAt:toBoxAt:index: plus a single compile:.
+Call again after refreshPreview/rebuildPreview: the overlay is tied to the current top morph."
+
+	| top map overlay world |
+	top := rootPreviewPresenter adapter
+		       ifNil: [ ^ self ]
+		       ifNotNil: [ :a | a widget ].
+	top ifNil: [ ^ self ].
+	world := top world.
+	world ifNil: [ ^ self ].
+	map := DdCanvasMap
+		       presenter: rootPreviewPresenter
+		       model: designer componentTree rootNode.
+	overlay := DdInteractionOverlayMorph canvasMap: map top: top.
+	overlay
+		onSelect: [ :path |
+				Transcript
+					show: 'selected ';
+					show: path printString ];
+		onDrop: [ :from :target |
+				Transcript
+					show: from printString , ' -> ';
+					show: target printString ].
+	world addMorphFront: overlay.
+	overlay syncBounds
+]
+
+{ #category : 'as yet unclassified' }
 DdCanvasPresenter >> presenterFromMorphWithoutModel: aMorph [
 "Walks up the morph ownership chain from aMorph, searching allPresenters 
 for a presenter whose adapter widget matches. Returns the found presenter or nil."

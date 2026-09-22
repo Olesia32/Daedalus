@@ -36,6 +36,16 @@ case-insensitively."
 					 arg2 label asLowercase includesSubstring: arg1 asLowercase ]) ]
 ]
 
+{ #category : 'dragging' }
+DdWidgetPalettePresenter >> containsWorldPoint: aPoint [
+"True when aPoint (world coordinates) is over the list of widgets."
+
+	^ list adapter ifNil: [ false ] ifNotNil: [ :anAdapter |
+			  anAdapter widget
+				  ifNil: [ false ]
+				  ifNotNil: [ :morph | morph boundsInWorld containsPoint: aPoint ] ]
+]
+
 { #category : 'layout' }
 DdWidgetPalettePresenter >> defaultLayout [
 
@@ -54,7 +64,7 @@ DdWidgetPalettePresenter >> designer: aDesigner [
     designer := aDesigner
 ]
 
-{ #category : 'accessing' }
+{ #category : 'initialization' }
 DdWidgetPalettePresenter >> initializePresenters [ 
     model := DdWidgetRegistry all.
     list := SpListPresenter new.
@@ -71,4 +81,9 @@ DdWidgetPalettePresenter >> initializePresenters [
         height: 25;
         placeholder: 'Choose widget...'.
     self connectFilter
+]
+
+{ #category : 'dragging' }
+DdWidgetPalettePresenter >> selectedDescriptor [
+	^ list selectedItem
 ]

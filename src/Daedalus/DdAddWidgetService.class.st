@@ -32,6 +32,20 @@ DdAddWidgetService >> addInstVar: varName [
 ]
 
 { #category : 'accessing' }
+DdAddWidgetService >> addVariableFor: aDescriptor [
+	"Like addWidget:, but only the instance variable and its initialisation: where the widget goes
+	in defaultLayout is decided by the caller. Answers the variable name."
+
+	| varName |
+	varName := self generateVarNameFor: aDescriptor.
+	self addInstVar: varName.
+	self
+		patchInitializePresenters: varName
+		initExpression: aDescriptor initExpression.
+	^ varName
+]
+
+{ #category : 'accessing' }
 DdAddWidgetService >> addWidget: aDescriptor [
   "The main entry point for adding a widget. I derive a unique variable name from aDescriptor, register it as an instance variable,
 patch both initializePresenters and defaultLayout, and return the generated name."

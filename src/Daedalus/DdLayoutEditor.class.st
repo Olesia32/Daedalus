@@ -28,6 +28,26 @@ DdLayoutEditor class >> forClass: aClass [
 	^ self on: (aClass >> #defaultLayout) sourceCode
 ]
 
+{ #category : 'paths' }
+DdLayoutEditor class >> movedPathFor: aSourcePath into: aTargetPath at: anIndex [
+"The path of a node after moveAt:toBoxAt:index: with these arguments. The target path is meant
+before the move; it shifts by one when the removed node sat earlier in the child list of one of
+the target's ancestors."
+
+	| parentPath adjusted |
+	parentPath := aSourcePath allButLast.
+	adjusted := aTargetPath.
+	(aTargetPath size > parentPath size and: [
+			 (aTargetPath first: parentPath size) = parentPath and: [
+				 (aTargetPath at: parentPath size + 1) > aSourcePath last ] ])
+		ifTrue: [
+				adjusted := aTargetPath copy.
+				adjusted
+					at: parentPath size + 1
+					put: (aTargetPath at: parentPath size + 1) - 1 ].
+	^ adjusted , { anIndex }
+]
+
 { #category : 'instance creation' }
 DdLayoutEditor class >> on: aSourceString [
 	^ self new setSource: aSourceString
