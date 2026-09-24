@@ -10,7 +10,8 @@ Class {
 		'hobbyGroup',
 		'nameInputPresenter',
 		'agreeCheckBox',
-		'checkBox'
+		'checkBox',
+		'button1'
 	],
 	#category : 'Daedalus-Daedalus-Examples',
 	#package : 'Daedalus',
@@ -20,23 +21,29 @@ Class {
 { #category : 'layout' }
 DdTestPresenter >> defaultLayout [
 
-	| tmp1 |
-	tmp1 := SpBoxLayout new.
-	tmp1
-		spacing: 10;
-		add: titleLabel expand: false;
-		add: nameInputPresenter expand: false;
-		add: agreeCheckBox expand: false;
-		add: hobbyGroup expand: false;
-		add: listPresenter expand: true;
-		add: genderGroup expand: false;
-		add: submitButton expand: false.
-	^ tmp1 yourself
+	^ SpBoxLayout new
+		  spacing: 10;
+		  add: (SpBoxLayout newTopToBottom
+				   spacing: 4;
+				   add: titleLabel;
+				   yourself)
+		  expand: false;
+		  add: agreeCheckBox expand: false;
+		  add: button1;
+		  add: genderGroup expand: false;
+		  add: hobbyGroup expand: false;
+		  add: nameInputPresenter expand: false;
+		  add: listPresenter expand: true;
+		  add: submitButton expand: false;
+		  yourself
 ]
 
 { #category : 'initialization' }
 DdTestPresenter >> initializePresenters [
+
 	super initializePresenters.
+	button1 := PresenterDecorator wrap: SpButtonPresenter.
+	button1 label: 'Hello'.
 	checkBox := SpCheckBoxPresenter new.
 	checkBox label: 'Check'.
 	titleLabel := LabelPresenter new.

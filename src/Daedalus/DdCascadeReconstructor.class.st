@@ -130,6 +130,7 @@ which never has a return value whose receiver is a bare variable."
 
 { #category : 'private' }
 DdCascadeReconstructor >> textForArgument: anArgumentNode [
+
 	(anArgumentNode isVariable and: [
 		 receivers includesKey: anArgumentNode name ]) ifTrue: [
 			^ '('
@@ -150,6 +151,7 @@ DdCascadeReconstructor >> textForArgument: anArgumentNode [
 
 { #category : 'private' }
 DdCascadeReconstructor >> textForMessage: aMessageNode [
+
 	| keywords argTexts |
 	aMessageNode arguments isEmpty ifTrue: [
 		^ aMessageNode selector asString ].

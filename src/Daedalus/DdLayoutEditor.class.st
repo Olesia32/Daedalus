@@ -218,7 +218,30 @@ DdLayoutEditor >> root [
 
 { #category : 'initialization' }
 DdLayoutEditor >> setSource: aString [
-	ast := RBParser parseMethod: aString.
+"When the source is a decompiled/flattened method, DdLayoutParser can still read it, but the
+model it builds then would sit on a fragment of AST that is disconnected from the method body
+the editor holds onto (ast) - so every subsequent edit would silently change that fragment while
+source/reparse/applyTo: kept serialising the original, untouched ast. To make edits real, ast
+itself is rebuilt into clean nested-cascade form here, once, before the model is built from it;
+from then on the model's nodes are genuine parts of ast, exactly as with ordinary source."
+
+"The method pattern is always the bare selector #defaultLayout throughout this whole class
+hierarchy, so it is written literally rather than sliced out of aString - the source's line
+ending (cr or lf, and this image uses lf) is not something safe to guess at and search for."
+
+	| candidate reconstructedExpression rebuilt |
+	candidate := RBParser parseMethod: aString.
+	reconstructedExpression := DdCascadeReconstructor
+		                           reconstructedRootSourceFor: candidate.
+	ast := candidate.
+	reconstructedExpression ifNotNil: [
+			[
+				rebuilt := RBParser parseMethod:
+					           'defaultLayout ^ ' , reconstructedExpression.
+				ast := rebuilt ]
+				on: Error
+				do: [ :error | "keep the original ast: reading still works, only self-healing is skipped"
+					 ] ].
 	root := DdLayoutParser new parseMethodNode: ast
 ]
 

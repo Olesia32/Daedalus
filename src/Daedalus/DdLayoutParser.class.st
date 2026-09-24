@@ -104,7 +104,20 @@ DdLayoutParser >> parseExpression: anExpression addMessage: aMessage [
 ]
 
 { #category : 'parsing' }
+DdLayoutParser >> parseExpressionSource: aString [ 
+	"Parses aString as a stand-alone expression (no method pattern, no return statement).
+	Answers nil when it cannot be parsed at all."
+
+	| expression |
+	expression := [ OCParser parseExpression: aString ]
+		on: Error
+		do: [ :e | ^ nil ].
+	^ self parseExpression: expression addMessage: nil
+]
+
+{ #category : 'parsing' }
 DdLayoutParser >> parseMethodNode: aMethodNode [
+
 	| return expression reconstructedSource |
 	return := aMethodNode body statements
 		          detect: [ :each | each isReturn ]
@@ -118,6 +131,15 @@ DdLayoutParser >> parseMethodNode: aMethodNode [
 ]
 
 { #category : 'parsing' }
-DdLayoutParser >> parseMethodSource: aString [
-	^ self parseMethodNode: (RBParser parseMethod: aString)
+DdLayoutParser >> parseMethodSource: aString [ 
+	"Parses aString as a defaultLayout method (temps, statements, an explicit ^ return).
+	When aString is instead a bare expression with no method pattern/return - as produced by
+	DdCascadeReconstructor reconstructedRootSourceFor: - falls back to parsing it as an expression."
+
+	| methodResult |
+	methodResult := [ self parseMethodNode: (RBParser parseMethod: aString) ]
+		on: Error
+		do: [ :e | nil ].
+	^ methodResult ifNotNil: [ methodResult ]
+	  ifNil: [ self parseExpressionSource: aString ]
 ]
