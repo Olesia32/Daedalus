@@ -28,11 +28,11 @@ DdTestPresenter >> defaultLayout [
 				   add: titleLabel;
 				   yourself)
 		  expand: false;
-		  add: agreeCheckBox expand: false;
-		  add: button1;
 		  add: genderGroup expand: false;
-		  add: hobbyGroup expand: false;
+		  add: agreeCheckBox expand: false;
 		  add: nameInputPresenter expand: false;
+		  add: button1;
+		  add: hobbyGroup expand: false;
 		  add: listPresenter expand: true;
 		  add: submitButton expand: false;
 		  yourself
@@ -70,6 +70,13 @@ DdTestPresenter >> initializePresenters [
 	listPresenter := ListPresenter new.
 	listPresenter items: #( '1' '2' '3' '5' '6' '7' '4' ).
 	hobbyGroup := CheckboxGroupPresenter new.
+	hobbyGroup selectedIndexes: #( 2 ).
+	hobbyGroup items: #( 'Cooking' 'Traveling' 'Programming'
+	   'Running' ).
+	hobbyGroup showFrame: false.
+	hobbyGroup showTitle: true.
+	hobbyGroup сolumnCount: 2.
+	hobbyGroup title: 'Hobby'.
 	hobbyGroup
 		items: #( 'Cooking' 'Traveling' 'Programming' 'Running' );
 		selectedIndexes: #( 1 2 );

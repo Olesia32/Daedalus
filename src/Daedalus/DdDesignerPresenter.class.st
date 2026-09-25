@@ -42,9 +42,9 @@ DdDesignerPresenter class >> onPresenter: aPresenterClass [
 
 { #category : 'dragging' }
 DdDesignerPresenter >> addPaletteWidget: aDescriptor into: aContainerPath at: anIndex [
-"Adds a new widget of aDescriptor at that place of the layout."
+	"Adds a new widget of aDescriptor at that place of the layout."
 
-	| varName |
+	| varName editor |
 	"a dry run first: a refusal must not leave a new variable behind"
 	[
 		(DdLayoutEditor forClass: presenter)
@@ -57,13 +57,13 @@ DdDesignerPresenter >> addPaletteWidget: aDescriptor into: aContainerPath at: an
 		           presenterClass: presenter;
 		           addVariableFor: aDescriptor.
 	[
-		(DdLayoutEditor forClass: presenter)
-			insertWidget: varName into: aContainerPath at: anIndex;
-			applyTo: presenter ]
+		editor := DdLayoutEditor forClass: presenter.
+		editor insertWidget: varName into: aContainerPath at: anIndex.
+		editor applyTo: presenter ]
 		on: Error
 		do: [ :error | ^ componentTree notifyUser: error messageText ].
 	codeEditor refreshCode.
-	componentTree refresh.
+	componentTree showModelFrom: editor.
 	componentTree selectNodeAtPath: aContainerPath , { anIndex }.
 	workArea refreshPreview
 ]
@@ -198,14 +198,12 @@ DdDesignerPresenter >> onSelectionChanged [
 	| tmp1 tmp2 |
 	tmp1 := workArea selectedPresenter.
 	tmp1 ifNil: [ ^ self ] ifNotNil: [ tmp1 ].
-	propertyPanel := DdPropertyPanelPresenter new.
 	propertyPanel
 		target: tmp1 owner
 		subPresenter: tmp1
 		onClass: tmp1 owner class
 		canvas: workArea.
 	tmp2 := workArea instVarNameForPresenterInRoot: tmp1.
-	self rebuildLayout.
 	codeEditor highlightVarName: tmp2.
 	workArea updateSelectionOverlay
 ]

@@ -82,8 +82,9 @@ DdComponentTreePresenter >> downButton [
 
 { #category : 'private' }
 DdComponentTreePresenter >> editNode: aNode with: aBlock [
-	"aBlock receives an editor and the path of aNode, edits, and answers the path to select
-	afterwards (or nil). The edit is compiled into the class, then the tree refreshed."
+"aBlock receives an editor and the path of aNode, edits, and answers the path to select
+afterwards (or nil). The edit is compiled into the class, then the tree rebuilt from that
+same editor's model (see showModelFrom:) rather than by re-parsing the class again."
 
 	| path editor current newPath |
 	aNode ifNil: [ ^ self ].
@@ -99,7 +100,7 @@ DdComponentTreePresenter >> editNode: aNode with: aBlock [
 		editor applyTo: presenterClass ]
 		on: Error
 		do: [ :error | ^ self notifyUser: error messageText ].
-	self refresh.
+	self showModelFrom: editor.
 	newPath ifNotNil: [ self selectNodeAtPath: newPath ].
 	changeAction ifNotNil: [ :action | action value ]
 ]
@@ -212,11 +213,7 @@ DdComponentTreePresenter >> refresh [
 "Re-reads defaultLayout of the edited class and rebuilds the tree."
 
 	presenterClass ifNil: [ ^ self ].
-	rootNode := (DdLayoutEditor forClass: presenterClass) root.
-	treePresenter roots:
-		(rootNode ifNil: [ #(  ) ] ifNotNil: [ :r | { r } ]).
-	treePresenter expandAll.
-	self updateButtons
+	self showModelFrom: (DdLayoutEditor forClass: presenterClass)
 ]
 
 { #category : 'accessing' }
@@ -253,6 +250,19 @@ DdComponentTreePresenter >> selectionChanged [
 	self updateButtons.
 	selectionAction ifNotNil: [ :action |
 		action value: treePresenter selectedItem ]
+]
+
+{ #category : 'actions' }
+DdComponentTreePresenter >> showModelFrom: anEditor [
+"Rebuilds the tree from anEditor's own current model, without re-reading and re-parsing the
+edited class - used right after an edit whose editor we already know matches what was just
+compiled, so re-parsing the class from scratch would just redo work already done."
+
+	rootNode := anEditor root.
+	treePresenter roots:
+		(rootNode ifNil: [ #(  ) ] ifNotNil: [ :r | { r } ]).
+	treePresenter expandAll.
+	self updateButtons
 ]
 
 { #category : 'accessing' }
