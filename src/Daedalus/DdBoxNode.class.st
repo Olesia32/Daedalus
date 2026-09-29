@@ -81,6 +81,16 @@ DdBoxNode >> insertChild: aNode at: anIndex [
 ]
 
 { #category : 'testing' }
+DdBoxNode >> isAnchorSelector: aSelector [
+"Whether aSelector is a structural no-op message (like the trailing yourself) rather than a real
+property - so it should never show up in propertyMessages/treeLabel. Plain boxes have none; a
+subclass whose only way to keep a cascade non-collapsing is a harmless call of its own (see
+DdAbsoluteNode) overrides this to say so."
+
+	^ false
+]
+
+{ #category : 'testing' }
 DdBoxNode >> isContainerNode [
 	^ true
 ]
@@ -118,12 +128,23 @@ DdBoxNode >> messageIndexForInsertionAt: anIndex [
 
 { #category : 'editing' }
 DdBoxNode >> newAddMessageFor: aNode [
-	"The message that will insert aNode into this container's cascade.
-	A plain box keeps the selector and arguments (constraints) of the node's own add-message."
+"The message that will insert aNode into this container's cascade. A plain box keeps the
+selector and arguments (constraints) of the node's own add-message, EXCEPT when that selector
+is grid-only (atPoint:/atPoint:span:, or the deprecated at:/at:span:) - a Box cannot accept a
+cell position, so it falls back to a plain add: instead, same as moving out of a paned already
+drops its constraints."
 
+	| selector |
+	selector := aNode addSelector.
+	(#( #add:atPoint: #add:atPoint:span: #add:at: #add:at:span: )
+		 includes: selector) ifTrue: [
+			^ OCMessageNode
+				  receiver: cascade receiver copy
+				  selector: #add:
+				  arguments: { aNode addMessage arguments first } ].
 	^ OCMessageNode
 		  receiver: cascade receiver copy
-		  selector: aNode addSelector
+		  selector: selector
 		  arguments: aNode addMessage arguments asArray
 ]
 
@@ -145,11 +166,19 @@ DdBoxNode >> propertyMessages [
 
 { #category : 'editing' }
 DdBoxNode >> removeChild: aNode [
+"Removing the last non-yourself message would leave the cascade with a single message
+(just yourself). Pharo's own formattedCode then prints that without a semicolon - valid Smalltalk,
+but no longer a cascade, so a later reparse turns the whole node into an unreadable DdOpaqueNode.
+Guard against it by duplicating the trailing message first, so the cascade never drops below two
+messages. Harmless: 'yourself; yourself' still yields the same object."
+
 	| index messageIndex |
 	index := children identityIndexOf: aNode.
 	index = 0 ifTrue: [ ^ self error: 'Not a child of this box' ].
 	cascade messages size > 1 ifFalse: [
 		^ self error: 'Cannot remove the last message of a cascade' ].
+	cascade messages size = 2 ifTrue: [
+		cascade messages add: cascade messages last copy ].
 	"AST nodes compare structurally, so identity is used on purpose"
 	messageIndex := cascade messages identityIndexOf: aNode addMessage.
 	cascade messages removeAt: messageIndex.

@@ -11,7 +11,11 @@ Class {
 		'nameInputPresenter',
 		'agreeCheckBox',
 		'checkBox',
-		'button1'
+		'button1',
+		'checkbox1',
+		'label1',
+		'list1',
+		'button2'
 	],
 	#category : 'Daedalus-Daedalus-Examples',
 	#package : 'Daedalus',
@@ -25,13 +29,12 @@ DdTestPresenter >> defaultLayout [
 		  spacing: 10;
 		  add: (SpBoxLayout newTopToBottom
 				   spacing: 4;
-				   add: titleLabel;
 				   yourself)
 		  expand: false;
-		  add: genderGroup expand: false;
+		  add: titleLabel;
 		  add: agreeCheckBox expand: false;
 		  add: nameInputPresenter expand: false;
-		  add: button1;
+		  add: genderGroup expand: false;
 		  add: hobbyGroup expand: false;
 		  add: listPresenter expand: true;
 		  add: submitButton expand: false;
@@ -42,8 +45,14 @@ DdTestPresenter >> defaultLayout [
 DdTestPresenter >> initializePresenters [
 
 	super initializePresenters.
+	button2 := PresenterDecorator wrap: SpButtonPresenter.
+	list1 := PresenterDecorator wrap: SpListPresenter.
+	label1 := PresenterDecorator wrap: SpLabelPresenter.
+	checkbox1 := PresenterDecorator wrap: SpCheckBoxPresenter.
 	button1 := PresenterDecorator wrap: SpButtonPresenter.
-	button1 label: 'Hello'.
+	button1 height: 20.
+	button1 backgroundColor: '#red'.
+	button1 label: 'Hello!'.
 	checkBox := SpCheckBoxPresenter new.
 	checkBox label: 'Check'.
 	titleLabel := LabelPresenter new.
@@ -51,6 +60,7 @@ DdTestPresenter >> initializePresenters [
 	submitButton := ButtonPresenter new.
 	submitButton label: 'Submit'.
 	nameInputPresenter := TextInputPresenter new.
+	nameInputPresenter text: 'Olesia'.
 	nameInputPresenter placeholder: 'Enter your name'.
 	date := PresenterDecorator wrap: SpDatePresenter.
 	date date: '20 June 2026'.
@@ -60,6 +70,12 @@ DdTestPresenter >> initializePresenters [
 		state: true;
 		label: 'I agree'.
 	genderGroup := RadioGroupPresenter new.
+	genderGroup itemSelected: 2.
+	genderGroup items: #( 'male' 'female' 'other' ).
+	genderGroup showFrame: false.
+	genderGroup showTitle: false.
+	genderGroup сolumnCount: 3.
+	genderGroup title: 'Gender'.
 	genderGroup
 		itemSelected: 2;
 		showFrame: false;

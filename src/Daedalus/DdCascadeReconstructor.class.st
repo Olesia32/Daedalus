@@ -13,11 +13,6 @@ Class {
 
 { #category : 'reconstructing' }
 DdCascadeReconstructor class >> reconstructedRootSourceFor: aMethodNode [
-"The source text of the single nested-cascade expression equivalent to aMethodNode's body,
-when that body has the flattened 'tmpVar := receiver. tmpVar msg1; msg2. ... ^ tmpVar [yourself]'
-shape (as produced when a method's source is lost and Pharo decompiles it from bytecode, or as
-written by hand with temps). Answers nil when the body does not match that shape - the caller
-then falls back to its normal handling, unchanged."
 
 	^ self new reconstructFrom: aMethodNode
 ]

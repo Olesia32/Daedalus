@@ -40,6 +40,27 @@ DdComponentTreePresenter >> addContainerToSelection [
 		with: [ :editor :path | editor addContainer: kind near: path ]
 ]
 
+{ #category : 'canvas' }
+DdComponentTreePresenter >> containerOutlineEntries: aLivePresenter [
+
+	| root map entries |
+	presenterClass ifNil: [ ^ #(  ) ].
+	root := [ (DdLayoutEditor forClass: presenterClass) root ]
+		        on: Error
+		        do: [ nil ].
+	root ifNil: [ ^ #(  ) ].
+	map := [ DdCanvasMap presenter: aLivePresenter model: root ]
+		       on: Error
+		       do: [ nil ].
+	map ifNil: [ ^ #(  ) ].
+	entries := OrderedCollection new.
+	root allNodesDo: [ :node |
+			node isContainerNode ifTrue: [
+					(map boundsAt: node path) ifNotNil: [ :rect |
+						entries add: rect -> node kindLabel ] ] ].
+	^ entries
+]
+
 { #category : 'layout' }
 DdComponentTreePresenter >> defaultLayout [
 
@@ -82,9 +103,6 @@ DdComponentTreePresenter >> downButton [
 
 { #category : 'private' }
 DdComponentTreePresenter >> editNode: aNode with: aBlock [
-"aBlock receives an editor and the path of aNode, edits, and answers the path to select
-afterwards (or nil). The edit is compiled into the class, then the tree rebuilt from that
-same editor's model (see showModelFrom:) rather than by re-parsing the class again."
 
 	| path editor current newPath |
 	aNode ifNil: [ ^ self ].
@@ -176,6 +194,47 @@ children once the node has been taken out) and selects it at its new place."
 ]
 
 { #category : 'actions' }
+DdComponentTreePresenter >> moveNodeAt: aSourcePath intoAbsolute: anAbsolutePath at: aPoint [
+"Moves the node at aSourcePath to point aPoint inside the absolute layout at anAbsolutePath, and
+selects it there."
+
+	| node |
+	node := rootNode ifNotNil: [ :root |
+			        [ root nodeAtPath: aSourcePath ]
+				        on: Error
+				        do: [ nil ] ].
+	node ifNil: [
+		^ self notifyUser: 'The tree is out of date - press Refresh' ].
+	self editNode: node with: [ :editor :path |
+			| adjusted |
+			editor moveAt: path toAbsoluteAt: anAbsolutePath point: aPoint.
+			adjusted := DdLayoutEditor
+				            shiftedTargetPath: anAbsolutePath
+				            afterRemoving: path.
+			adjusted , { (editor nodeAt: adjusted) children size } ]
+]
+
+{ #category : 'actions' }
+DdComponentTreePresenter >> moveNodeAt: aSourcePath intoGrid: aGridPath cell: aCell [
+"Moves the node at aSourcePath into cell aCell of the grid at aGridPath and selects it there."
+
+	| node |
+	node := rootNode ifNotNil: [ :root |
+			        [ root nodeAtPath: aSourcePath ]
+				        on: Error
+				        do: [ nil ] ].
+	node ifNil: [
+		^ self notifyUser: 'The tree is out of date - press Refresh' ].
+	self editNode: node with: [ :editor :path |
+			| adjusted |
+			editor moveAt: path toGridAt: aGridPath cell: aCell.
+			adjusted := DdLayoutEditor
+				            shiftedTargetPath: aGridPath
+				            afterRemoving: path.
+			adjusted , { (editor nodeAt: adjusted) children size } ]
+]
+
+{ #category : 'actions' }
 DdComponentTreePresenter >> moveSelectionDown [
 	self editSelection: [ :editor :path |
 			editor moveDownAt: path.
@@ -254,15 +313,28 @@ DdComponentTreePresenter >> selectionChanged [
 
 { #category : 'actions' }
 DdComponentTreePresenter >> showModelFrom: anEditor [
-"Rebuilds the tree from anEditor's own current model, without re-reading and re-parsing the
-edited class - used right after an edit whose editor we already know matches what was just
-compiled, so re-parsing the class from scratch would just redo work already done."
 
 	rootNode := anEditor root.
 	treePresenter roots:
 		(rootNode ifNil: [ #(  ) ] ifNotNil: [ :r | { r } ]).
 	treePresenter expandAll.
 	self updateButtons
+]
+
+{ #category : 'actions' }
+DdComponentTreePresenter >> swapNodesAt: aSourcePath with: aSwapPath [
+"Exchanges the grid cells of the two widgets and keeps the dragged one selected."
+
+	| node |
+	node := rootNode ifNotNil: [ :root |
+			        [ root nodeAtPath: aSourcePath ]
+				        on: Error
+				        do: [ nil ] ].
+	node ifNil: [
+		^ self notifyUser: 'The tree is out of date - press Refresh' ].
+	self editNode: node with: [ :editor :path |
+			editor swapGridCells: path with: aSwapPath.
+			path ]
 ]
 
 { #category : 'accessing' }

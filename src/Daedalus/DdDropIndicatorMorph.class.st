@@ -6,14 +6,14 @@ Class {
 	#tag : 'Daedalus-UI'
 }
 
-{ #category : 'events' }
+{ #category : 'geometry testing' }
 DdDropIndicatorMorph >> containsPoint: aPoint [
 	"A ghost: it never takes part in hit testing, events reach the widgets under it."
 
 	^ false
 ]
 
-{ #category : 'events' }
+{ #category : 'events - processing' }
 DdDropIndicatorMorph >> containsPoint: aPoint event: anEvent [
 	^ false
 ]

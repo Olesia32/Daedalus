@@ -64,8 +64,78 @@ DdDesignerPresenter >> addPaletteWidget: aDescriptor into: aContainerPath at: an
 		do: [ :error | ^ componentTree notifyUser: error messageText ].
 	codeEditor refreshCode.
 	componentTree showModelFrom: editor.
-	componentTree selectNodeAtPath: aContainerPath , { anIndex }.
-	workArea refreshPreview
+	workArea rebuildPreview.
+	componentTree selectNodeAtPath: aContainerPath , { anIndex }
+]
+
+{ #category : 'dragging' }
+DdDesignerPresenter >> addPaletteWidget: aDescriptor intoAbsolute: anAbsolutePath at: aPoint [
+"Adds a new widget of aDescriptor at point aPoint inside the absolute layout at anAbsolutePath."
+
+	| varName editor newIndex |
+	"a dry run first: a refusal must not leave a new variable behind"
+	[
+		(DdLayoutEditor forClass: presenter)
+			insertAbsoluteWidget: 'dryRunWidget'
+			into: anAbsolutePath
+			atPoint: aPoint
+			extent: nil ]
+		on: Error
+		do: [ :error | ^ componentTree notifyUser: error messageText ].
+	varName := DdAddWidgetService new
+		           presenterClass: presenter;
+		           addVariableFor: aDescriptor.
+	[
+		editor := DdLayoutEditor forClass: presenter.
+		editor
+			insertAbsoluteWidget: varName
+			into: anAbsolutePath
+			atPoint: aPoint
+			extent: nil.
+		editor applyTo: presenter ]
+		on: Error
+		do: [ :error | ^ componentTree notifyUser: error messageText ].
+	newIndex := (editor nodeAt: anAbsolutePath) children size.
+	codeEditor refreshCode.
+	componentTree showModelFrom: editor.
+	"a widget the preview instance has never had needs the full rebuild, as in addPaletteWidget:into:at:"
+	workArea rebuildPreview.
+	componentTree selectNodeAtPath: anAbsolutePath , { newIndex }
+]
+
+{ #category : 'dragging' }
+DdDesignerPresenter >> addPaletteWidget: aDescriptor intoGrid: aGridPath cell: aCell [
+"Adds a new widget of aDescriptor to cell aCell of the grid at aGridPath."
+
+	| varName editor newIndex |
+	"a dry run first: a refusal must not leave a new variable behind"
+	[
+		(DdLayoutEditor forClass: presenter)
+			insertGridWidget: 'dryRunWidget'
+			into: aGridPath
+			atPosition: aCell
+			span: nil ]
+		on: Error
+		do: [ :error | ^ componentTree notifyUser: error messageText ].
+	varName := DdAddWidgetService new
+		           presenterClass: presenter;
+		           addVariableFor: aDescriptor.
+	[
+		editor := DdLayoutEditor forClass: presenter.
+		editor
+			insertGridWidget: varName
+			into: aGridPath
+			atPosition: aCell
+			span: nil.
+		editor applyTo: presenter ]
+		on: Error
+		do: [ :error | ^ componentTree notifyUser: error messageText ].
+	newIndex := (editor nodeAt: aGridPath) children size.
+	codeEditor refreshCode.
+	componentTree showModelFrom: editor.
+	"a widget the preview instance has never had needs the full rebuild, as in addPaletteWidget:into:at:"
+	workArea rebuildPreview.
+	componentTree selectNodeAtPath: aGridPath , { newIndex }
 ]
 
 { #category : 'adding' }
@@ -139,10 +209,28 @@ DdDesignerPresenter >> dragDropped: aPath on: aDropTarget [
 so it waits for the next UI cycle."
 
 	UIManager default defer: [
-			componentTree
-				moveNodeAt: aPath
-				into: aDropTarget containerPath
-				at: aDropTarget index ]
+			aDropTarget isSwap
+				ifTrue: [
+				componentTree swapNodesAt: aPath with: aDropTarget swapWithPath ]
+				ifFalse: [
+						aDropTarget isCellTarget
+							ifTrue: [
+									componentTree
+										moveNodeAt: aPath
+										intoGrid: aDropTarget containerPath
+										cell: aDropTarget cell ]
+							ifFalse: [
+									aDropTarget isPointTarget
+										ifTrue: [
+												componentTree
+													moveNodeAt: aPath
+													intoAbsolute: aDropTarget containerPath
+													at: aDropTarget point ]
+										ifFalse: [
+												componentTree
+													moveNodeAt: aPath
+													into: aDropTarget containerPath
+													at: aDropTarget index ] ] ] ]
 ]
 
 { #category : 'initialization' }
@@ -155,7 +243,6 @@ DdDesignerPresenter >> initializePresenters [
 	componentTree := DdComponentTreePresenter new.
 	componentTree whenNodeSelectedDo: [ :node |
 		self onTreeNodeSelected: node ].
-	"listens to the mouse from the start, so that a drag from the palette is possible before any canvas click"
 	self dragController
 ]
 
@@ -214,7 +301,7 @@ DdDesignerPresenter >> onTreeNodeSelected: aNode [
 	Containers and unsupported nodes do not exist on the canvas, so they change nothing."
 
 	| path varName |
-	syncingSelection == true ifTrue: [ ^ self ].
+	syncingSelection ifTrue: [ ^ self ].
 	(aNode notNil and: [ aNode isWidgetNode ]) ifFalse: [ ^ self ].
 	path := aNode path.
 	varName := aNode varName.
@@ -241,19 +328,34 @@ DdDesignerPresenter >> paletteDropped: aDescriptor on: aDropTarget [
 "Like dragDropped:on:, the hand is still busy: the work waits for the next UI cycle."
 
 	UIManager default defer: [
-			self
-				addPaletteWidget: aDescriptor
-				into: aDropTarget containerPath
-				at: aDropTarget index ]
+			aDropTarget isCellTarget
+				ifTrue: [
+						self
+							addPaletteWidget: aDescriptor
+							intoGrid: aDropTarget containerPath
+							cell: aDropTarget cell ]
+				ifFalse: [
+						aDropTarget isPointTarget
+							ifTrue: [
+									self
+										addPaletteWidget: aDescriptor
+										intoAbsolute: aDropTarget containerPath
+										at: aDropTarget point ]
+							ifFalse: [
+									self
+										addPaletteWidget: aDescriptor
+										into: aDropTarget containerPath
+										at: aDropTarget index ] ] ]
 ]
 
 { #category : 'initialization' }
 DdDesignerPresenter >> presenterClass: aClass [
-	"Initialises all sub-presenters, wires the canvas, the code editor and the component tree to this designer."
+"Initialises all sub-presenters, wires the canvas, the code editor and the component tree to this designer."
 
 	presenter := aClass.
 	workArea := DdCanvasPresenter onPresenter: presenter new.
 	workArea designer: self.
+	workArea ensureShieldInstalled.
 	codeEditor classToEdit: presenter.
 	codeEditor designer: self.
 	widgetPalette designer: self.

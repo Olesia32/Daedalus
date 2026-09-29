@@ -24,7 +24,9 @@ Class {
 		'presenterIndex',
 		'selectedPresenter',
 		'designer',
-		'selectionOverlay'
+		'selectionOverlay',
+		'shieldMorph',
+		'containerOutlineOverlay'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -44,6 +46,43 @@ DdCanvasPresenter >> clearOverlay [
     selectionOverlay ifNotNil: [ 
         selectionOverlay delete.
         selectionOverlay := nil ].
+]
+
+{ #category : 'selection' }
+DdCanvasPresenter >> containerOutlineEntries [
+
+	| livePresenter root map entries |
+	livePresenter := self rootPreviewPresenter.
+	livePresenter ifNil: [ ^ #(  ) ].
+	root := [ (DdLayoutEditor forClass: livePresenter class) root ]
+		        on: Error
+		        do: [ nil ].
+	root ifNil: [ ^ #(  ) ].
+	map := [ DdCanvasMap presenter: livePresenter model: root ]
+		       on: Error
+		       do: [ nil ].
+	map ifNil: [ ^ #(  ) ].
+	entries := OrderedCollection new.
+	root allNodesDo: [ :node |
+			node isContainerNode ifTrue: [
+					(map boundsAt: node path) ifNotNil: [ :rect |
+						entries add: rect -> node kindLabel ] ] ].
+	^ entries
+]
+
+{ #category : 'selection' }
+DdCanvasPresenter >> containerOutlineOverlay [
+"The overlay that outlines every live container on the canvas. Lives in the Morphic world, like
+selectionOverlay, not in the layout of the preview."
+
+	^ containerOutlineOverlay ifNil: [
+			  containerOutlineOverlay := DdContainerOutlinesMorph new
+				                             anchorProvider: [
+					                             self adapter ifNotNil: [ :anAdapter |
+							                             anAdapter widget ] ];
+				                             entriesProvider: [
+					                             self containerOutlineEntries ];
+				                             yourself ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -105,6 +144,18 @@ DdCanvasPresenter >> editedPresenter: aPresenter [
 
 	editedPresenter := aPresenter.
 	self rebuildPreview
+]
+
+{ #category : 'selection' }
+DdCanvasPresenter >> ensureShieldInstalled [
+"Added to the World right away so stepping engages; from then on the shield's own step method
+hides it until a live preview actually exists, and keeps it positioned over that preview only."
+
+	shieldMorph ifNotNil: [ ^ self ].
+	shieldMorph := DdInputShieldMorph new
+		               canvas: self;
+		               yourself.
+	World ifNotNil: [ :w | w addMorphFront: shieldMorph ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -193,21 +244,31 @@ DdCanvasPresenter >> presenterIndex [
 	^ presenterIndex
 ]
 
+{ #category : 'selection' }
+DdCanvasPresenter >> previewContainerMorph [
+"The top morph of the current preview - the shield mirrors its bounds and sits right in front
+of it, so nothing underneath (its widgets) ever sees a mouseDown."
+
+	^ rootPreviewPresenter
+		  ifNil: [ nil ]
+		  ifNotNil: [ :p |
+		  p adapter ifNil: [ nil ] ifNotNil: [ :a | a widget ] ]
+]
+
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> rebuildPreview [
-	"Instantiates a fresh preview from editedPresenter, rebuilds the presenter index, updates the layout, and schedules click hook
-installation after two UI cycles."
 
-	| newPresenter |
-	newPresenter := editedPresenter class new.
-	newPresenter build.
-	rootPreviewPresenter := newPresenter.
-
-	    self layout: (SpBoxLayout new
-        spacing: 30;
-        add: rootPreviewPresenter;
-        yourself).
-	self installClickHooks
+	| tmp1 tmp2 |
+	tmp1 := editedPresenter class new.
+	tmp1 build.
+	rootPreviewPresenter := tmp1.
+	tmp2 := SpBoxLayout new.
+	tmp2
+		spacing: 30;
+		add: rootPreviewPresenter.
+	self
+		layout: tmp2 yourself;
+		installClickHooks
 ]
 
 { #category : 'accessing' }
@@ -265,21 +326,58 @@ DdCanvasPresenter >> selectedPresenter [
 
 { #category : 'selection' }
 DdCanvasPresenter >> selectedWidgetMorph [
-	"The morph of the widget selected on the canvas, or nil."
 
-	^ selectedPresenter ifNotNil: [ :each |
-		  each adapter ifNotNil: [ :anAdapter | anAdapter widget ] ]
+	| tmp1 tmp2 tmp3 tmp4 |
+	tmp3 := tmp1 := selectedPresenter.
+	^ tmp3 ifNotNil: [
+			  tmp4 := tmp2 := tmp1 adapter.
+			  tmp4 ifNotNil: [ tmp2 widget ] ]
 ]
 
 { #category : 'selection' }
 DdCanvasPresenter >> selectionOverlay [
-	"The glass that frames the selected widget. It lives in the Morphic world, like halos, not in the
-	layout of the preview: an extra morph inside a Spec layout breaks its calculators."
 
-	^ selectionOverlay ifNil: [
-			  selectionOverlay := DdSelectionGlassMorph new
-				                      targetProvider: [ self selectedWidgetMorph ];
-				                      yourself ]
+	| tmp1 |
+	^ selectionOverlay
+		  ifNil: [
+				  tmp1 := DdSelectionGlassMorph new.
+				  tmp1 targetProvider: [ self selectedWidgetMorph ].
+				  selectionOverlay := tmp1 yourself ]
+		  ifNotNil: [ selectionOverlay ]
+]
+
+{ #category : 'selection' }
+DdCanvasPresenter >> shieldMouseDown: anEvent [
+
+	| point candidates best area bestArea |
+	rootPreviewPresenter ifNil: [ ^ self ].
+	point := anEvent position.
+	candidates := rootPreviewPresenter allPresenters select: [ :p |
+			              p adapter notNil and: [
+					              p adapter widget notNil and: [
+						              p adapter widget boundsInWorld containsPoint:
+							              point ] ] ].
+	candidates isEmpty ifTrue: [ ^ self ].
+	best := candidates first.
+	bestArea := best adapter widget boundsInWorld width
+	            * best adapter widget boundsInWorld height.
+	candidates do: [ :each |
+			area := each adapter widget boundsInWorld width
+			        * each adapter widget boundsInWorld height.
+			area < bestArea ifTrue: [
+					best := each.
+					bestArea := area ] ].
+	selectedPresenter := best.
+	(selectedPresenter owner isKindOf: RadioGroupPresenter) ifTrue: [
+		selectedPresenter := selectedPresenter owner ].
+	(selectedPresenter owner isKindOf: CheckboxGroupPresenter) ifTrue: [
+		selectedPresenter := selectedPresenter owner ].
+	designer ifNotNil: [
+			designer
+				onSelectionChanged;
+				onCanvasClicked ].
+	(anEvent respondsTo: #wasHandled:) ifTrue: [
+		anEvent wasHandled: true ]
 ]
 
 { #category : 'accessing' }
@@ -295,6 +393,17 @@ DdCanvasPresenter >> showOverlayFor: aMorph [
     world addMorph: selectionOverlay.
 ]
 
+{ #category : 'selection' }
+DdCanvasPresenter >> updateContainerOutlineOverlay [
+"Makes sure the container-outline overlay is on screen; it then follows the live preview by
+itself, the same way updateSelectionOverlay does for the selection frame."
+
+	| world |
+	world := self adapter ifNotNil: [ :anAdapter |
+		         anAdapter widget ifNotNil: [ :morph | morph world ] ].
+	self containerOutlineOverlay showIn: world
+]
+
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> updateOverlay [
     selectionOverlay ifNotNil: [ selectionOverlay update ]
@@ -307,5 +416,6 @@ DdCanvasPresenter >> updateSelectionOverlay [
 	| world |
 	world := self adapter ifNotNil: [ :anAdapter |
 		         anAdapter widget ifNotNil: [ :morph | morph world ] ].
-	self selectionOverlay showIn: world
+	self selectionOverlay showIn: world.
+	self updateContainerOutlineOverlay
 ]

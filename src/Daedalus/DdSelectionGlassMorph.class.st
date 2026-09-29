@@ -12,13 +12,13 @@ Class {
 	#tag : 'Daedalus-UI'
 }
 
-{ #category : 'events' }
+{ #category : 'geometry testing' }
 DdSelectionGlassMorph >> containsPoint: arg1 [
 
 	^ false
 ]
 
-{ #category : 'events' }
+{ #category : 'events - processing' }
 DdSelectionGlassMorph >> containsPoint: arg1 event: arg2 [
 
 	^ false
@@ -114,7 +114,7 @@ DdSelectionGlassMorph >> showIn: aWorld [
 	self syncWithTarget
 ]
 
-{ #category : 'stepping' }
+{ #category : 'stepping and presenter' }
 DdSelectionGlassMorph >> step [	"A stepping morph must never throw: it would fail again on every step and freeze the image."
 
 	[ self syncWithTarget ]
@@ -128,7 +128,7 @@ DdSelectionGlassMorph >> step [	"A stepping morph must never throw: it would fai
 				self hideGlass ]
 ]
 
-{ #category : 'stepping' }
+{ #category : 'stepping and presenter' }
 DdSelectionGlassMorph >> stepTime [
 
 	^ 100

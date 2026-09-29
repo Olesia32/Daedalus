@@ -9,7 +9,7 @@ Class {
 	#tag : 'Daedalus-UI'
 }
 
-{ #category : 'accessing' }
+{ #category : 'submorphs - add/remove' }
 DdSelectionOverlayMorph >> delete [
     self owner ifNotNil: [ super delete ].
     trackedMorph := nil

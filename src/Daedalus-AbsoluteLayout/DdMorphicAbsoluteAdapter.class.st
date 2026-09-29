@@ -98,12 +98,15 @@ DdMorphicAbsoluteAdapter >> frameFor: constraints of: aMorph [
 
 { #category : 'private' }
 DdMorphicAbsoluteAdapter >> growPanel: aPanel toFit: constraints of: childMorph [
-"Make the panel (never smaller than) the area covered by the child, so a window opens showing all its content."
+	"Make the panel (never smaller than) the area covered by the child, so a window opens showing all its content."
 
 	| corner |
-	corner := constraints position
-	          + (constraints extent ifNil: [ childMorph extent ]).
-	aPanel extent: (aPanel extent max: corner)
+	corner := 0 @ 0.
+	aPanel submorphs do: [ :each |
+		(each valueOfProperty: #absoluteConstraints) ifNotNil: [ :eachConstraints |
+			corner := corner max:
+				eachConstraints position + (eachConstraints extent ifNil: [ each extent ]) ] ].
+	aPanel extent: corner
 ]
 
 { #category : 'protocol' }
@@ -146,7 +149,7 @@ DdMorphicAbsoluteAdapter >> removeAll [
 	self verifyExtent
 ]
 
-{ #category : 'accessing' }
+{ #category : 'protocol' }
 DdMorphicAbsoluteAdapter >> removeSubWidgets [
 	widget removeAllMorphs
 ]

@@ -18,7 +18,9 @@ DdLayoutEditor class >> containerKinds [
 		  (#verticalBox -> 'Vertical box').
 		  (#horizontalBox -> 'Horizontal box').
 		  (#verticalPaned -> 'Vertical paned').
-		  (#horizontalPaned -> 'Horizontal paned') }
+		  (#horizontalPaned -> 'Horizontal paned').
+		  (#grid -> 'Grid').
+		  (#absolute -> 'Absolute layout') }
 ]
 
 { #category : 'instance creation' }
@@ -30,22 +32,10 @@ DdLayoutEditor class >> forClass: aClass [
 
 { #category : 'paths' }
 DdLayoutEditor class >> movedPathFor: aSourcePath into: aTargetPath at: anIndex [
-"The path of a node after moveAt:toBoxAt:index: with these arguments. The target path is meant
-before the move; it shifts by one when the removed node sat earlier in the child list of one of
-the target's ancestors."
+"The path of a node after moveAt:toBoxAt:index: with these arguments."
 
-	| parentPath adjusted |
-	parentPath := aSourcePath allButLast.
-	adjusted := aTargetPath.
-	(aTargetPath size > parentPath size and: [
-			 (aTargetPath first: parentPath size) = parentPath and: [
-				 (aTargetPath at: parentPath size + 1) > aSourcePath last ] ])
-		ifTrue: [
-				adjusted := aTargetPath copy.
-				adjusted
-					at: parentPath size + 1
-					put: (aTargetPath at: parentPath size + 1) - 1 ].
-	^ adjusted , { anIndex }
+	^ (self shiftedTargetPath: aTargetPath afterRemoving: aSourcePath)
+	  , { anIndex }
 ]
 
 { #category : 'instance creation' }
@@ -53,9 +43,25 @@ DdLayoutEditor class >> on: aSourceString [
 	^ self new setSource: aSourceString
 ]
 
+{ #category : 'paths' }
+DdLayoutEditor class >> shiftedTargetPath: aTargetPath afterRemoving: aSourcePath [
+"aTargetPath (a container, meant before a node is taken out) as it reads after aSourcePath is
+removed: it shifts by one when the removed node sat earlier in the child list of one of its ancestors."
+
+	| parentPath |
+	parentPath := aSourcePath allButLast.
+	(aTargetPath size > parentPath size and: [
+			 (aTargetPath first: parentPath size) = parentPath and: [
+				 (aTargetPath at: parentPath size + 1) > aSourcePath last ] ])
+		ifFalse: [ ^ aTargetPath ].
+	^ aTargetPath copy
+		  at: parentPath size + 1
+		  put: (aTargetPath at: parentPath size + 1) - 1;
+		  yourself
+]
+
 { #category : 'containers' }
 DdLayoutEditor class >> sourceForContainerKind: aKind [
-"An empty container as a cascade, the only form the parser recognises."
 
 	aKind = #verticalBox ifTrue: [
 		^ 'SpBoxLayout newTopToBottom spacing: 4; yourself' ].
@@ -65,6 +71,10 @@ DdLayoutEditor class >> sourceForContainerKind: aKind [
 		^ 'SpPanedLayout newTopToBottom positionOfSlider: 0.5; yourself' ].
 	aKind = #horizontalPaned ifTrue: [
 		^ 'SpPanedLayout newLeftToRight positionOfSlider: 0.5; yourself' ].
+	aKind = #grid ifTrue: [
+		^ 'SpGridLayout new columnSpacing: 4; rowSpacing: 4; yourself' ].
+	aKind = #absolute ifTrue: [
+		^ 'DdAbsoluteLayout new removeAll; yourself' ].
 	^ self error: 'Unknown container kind: ' , aKind printString
 ]
 
@@ -110,12 +120,125 @@ DdLayoutEditor >> boxAt: aPath [
 	^ node
 ]
 
+{ #category : 'grid' }
+DdLayoutEditor >> gridAddMessageFor: anArgumentNode cell: aCell span: aSpanOrNil [
+"A detached add:atPoint:[span:] message for anArgumentNode - always the modern selector."
+
+	^ (aSpanOrNil isNil or: [ aSpanOrNil = (1 @ 1) ])
+		  ifTrue: [
+				  OCMessageNode
+					  receiver: (OCVariableNode named: 'layout')
+					  selector: #add:atPoint:
+					  arguments: {
+							  anArgumentNode.
+							  (OCParser parseExpression: aCell printString) } ]
+		  ifFalse: [
+				  OCMessageNode
+					  receiver: (OCVariableNode named: 'layout')
+					  selector: #add:atPoint:span:
+					  arguments: {
+							  anArgumentNode.
+							  (OCParser parseExpression: aCell printString).
+							  (OCParser parseExpression: aSpanOrNil printString) } ]
+]
+
+{ #category : 'grid' }
+DdLayoutEditor >> gridOccupantIn: aGrid at: aCell ignoring: aNode [
+"The child of aGrid that covers aCell (spans included), other than aNode, or nil."
+
+	^ aGrid children
+		  detect: [ :each |
+				  each ~~ aNode and: [
+						  each gridPosition notNil and: [
+								  | position span |
+								  position := each gridPosition.
+								  span := each gridSpan.
+								  (aCell x between: position x and: position x + span x - 1)
+									  and: [
+									  aCell y between: position y and: position y + span y - 1 ] ] ] ]
+		  ifNone: [ nil ]
+]
+
+{ #category : 'absolute' }
+DdLayoutEditor >> insertAbsoluteWidget: aVarName into: aPath atPoint: aPositionPoint extent: anExtentOrNil [
+
+	| container detached node |
+	container := self nodeAt: aPath.
+	(container isKindOf: DdAbsoluteNode) ifFalse: [
+		^ self error: 'Not an absolute layout' ].
+	detached := anExtentOrNil
+		            ifNil: [
+				            OCMessageNode
+					            receiver: (OCVariableNode named: 'layout')
+					            selector: #add:atPoint:
+					            arguments: {
+							            (OCVariableNode named: aVarName).
+							            (OCParser parseExpression:
+								             aPositionPoint printString) } ]
+		            ifNotNil: [
+				            OCMessageNode
+					            receiver: (OCVariableNode named: 'layout')
+					            selector: #add:atPoint:extent:
+					            arguments: {
+							            (OCVariableNode named: aVarName).
+							            (OCParser parseExpression:
+								             aPositionPoint printString).
+							            (OCParser parseExpression:
+								             anExtentOrNil printString) } ].
+	node := DdWidgetNode new
+		        addMessage: detached;
+		        yourself.
+	container insertChildDirectly: node.
+	self reparse
+]
+
 { #category : 'containers' }
 DdLayoutEditor >> insertContainer: aKind into: aPath at: anIndex [
 	| target |
 	target := self boxAt: aPath.
 	target insertChild: (self newContainerNodeOfKind: aKind) at: anIndex.
 	^ self reparse
+]
+
+{ #category : 'containers' }
+DdLayoutEditor >> insertGridWidget: aVarName into: aPath atPosition: aPositionPoint span: aSpanPointOrNil [
+
+	| grid existing detached node |
+	grid := self nodeAt: aPath.
+	(grid isKindOf: DdGridNode) ifFalse: [
+		^ self error: 'Not a grid container' ].
+	existing := grid children
+		            detect: [ :each |
+				            each constraintArguments notEmpty and: [
+						            self
+							            sameGridPosition: each constraintArguments first
+							            as: aPositionPoint ] ]
+		            ifNone: [ nil ].
+	existing ifNotNil: [ grid removeChild: existing ].
+	detached := aSpanPointOrNil
+		            ifNil: [
+				            OCMessageNode
+					            receiver: (OCVariableNode named: 'layout')
+					            selector: #add:atPoint:
+					            arguments: {
+							            (OCVariableNode named: aVarName).
+							            (OCParser parseExpression:
+								             aPositionPoint printString) } ]
+		            ifNotNil: [
+				            OCMessageNode
+					            receiver: (OCVariableNode named: 'layout')
+					            selector: #add:atPoint:span:
+					            arguments: {
+							            (OCVariableNode named: aVarName).
+							            (OCParser parseExpression:
+								             aPositionPoint printString).
+							            (OCParser parseExpression:
+								             aSpanPointOrNil printString) } ].
+	node := DdWidgetNode new
+		        addMessage: detached;
+		        yourself.
+	grid insertChildDirectly: node.
+	self reparse
 ]
 
 { #category : 'editing' }
@@ -131,6 +254,29 @@ DdLayoutEditor >> insertWidget: aVarName into: aPath at: anIndex [
 		        addMessage: detached;
 		        yourself.
 	target insertChild: node at: anIndex.
+	self reparse
+]
+
+{ #category : 'absolute' }
+DdLayoutEditor >> moveAt: aSourcePath toAbsoluteAt: aPath point: aPoint [
+
+	| node container first |
+	node := self nodeAt: aSourcePath.
+	container := self nodeAt: aPath.
+	(container isKindOf: DdAbsoluteNode) ifFalse: [
+		^ self error: 'Not an absolute layout' ].
+	node parent ifNil: [ ^ self error: 'Cannot move the root' ].
+	(container == node or: [ container isDescendantOf: node ]) ifTrue: [
+		^ self error: 'Cannot move a node into itself' ].
+	first := node addMessage arguments first.
+	node parent removeChild: node.
+	node addMessage: (OCMessageNode
+			 receiver: (OCVariableNode named: 'layout')
+			 selector: #add:atPoint:
+			 arguments: {
+					 first.
+					 (OCParser parseExpression: aPoint printString) }).
+	container insertChildDirectly: node.
 	self reparse
 ]
 
@@ -157,6 +303,30 @@ target's children AFTER the moved node has been taken out of its old place."
 	self reparse
 ]
 
+{ #category : 'grid' }
+DdLayoutEditor >> moveAt: aSourcePath toGridAt: aGridPath cell: aCell [
+	"Moves the node at aSourcePath into the free cell aCell of the grid at aGridPath. A node already
+in that grid keeps its span. A taken cell is refused, not silently replaced."
+
+	| node grid span first |
+	node := self nodeAt: aSourcePath.
+	grid := self nodeAt: aGridPath.
+	(grid isKindOf: DdGridNode) ifFalse: [
+		^ self error: 'Not a grid container' ].
+	node parent ifNil: [ ^ self error: 'Cannot move the root' ].
+	(grid == node or: [ grid isDescendantOf: node ]) ifTrue: [
+		^ self error: 'Cannot move a node into itself' ].
+	(self gridOccupantIn: grid at: aCell ignoring: node) ifNotNil: [
+		^ self error: 'That grid cell is already occupied' ].
+	span := node parent == grid ifTrue: [ node gridSpan ].
+	first := node addMessage arguments first.
+	node parent removeChild: node.
+	node addMessage:
+		(self gridAddMessageFor: first cell: aCell span: span).
+	grid insertChildDirectly: node.
+	self reparse
+]
+
 { #category : 'editing' }
 DdLayoutEditor >> moveDownAt: aPath [
 	| node |
@@ -176,16 +346,16 @@ DdLayoutEditor >> moveUpAt: aPath [
 
 { #category : 'containers' }
 DdLayoutEditor >> newContainerNodeOfKind: aKind [
-	"A detached container node. Its expression sits in a placeholder add: message,
-	which insertChild:at: replaces with a real one."
 
 	| expression detached |
 	expression := OCParser parseExpression:
 		              (self class sourceForContainerKind: aKind).
 	detached := OCMessageNode
 		            receiver: (OCVariableNode named: 'layout')
-		            selector: #add:
-		            arguments: { expression }.
+		            selector: #add:expand:
+		            arguments: {
+				            expression.
+				            (OCParser parseExpression: 'false') }.
 	^ DdLayoutParser new parseExpression: expression addMessage: detached
 ]
 
@@ -216,18 +386,37 @@ DdLayoutEditor >> root [
 	^ root
 ]
 
+{ #category : 'private' }
+DdLayoutEditor >> sameGridPosition: aFormattedText as: aPoint [
+
+	| cleaned parts |
+	cleaned := aFormattedText select: [ :c |
+		           c isDigit or: [ #( $@ $- ) includes: c ] ].
+	parts := cleaned substrings: '@'.
+	parts size = 2 ifFalse: [ ^ false ].
+	^ [
+		  parts first asInteger = aPoint x and: [
+			  parts second asInteger = aPoint y ] ]
+		  on: Error
+		  do: [ :error | false ]
+]
+
+{ #category : 'grid' }
+DdLayoutEditor >> setGridPositionOf: aNode to: aCell [
+"Rewrites just aNode's cell, keeping its own span (if any)."
+
+	| span |
+	span := aNode gridSpan = (1 @ 1)
+		        ifTrue: [ nil ]
+		        ifFalse: [ aNode gridSpan ].
+	aNode replaceAddMessageWith: (self
+			 gridAddMessageFor: aNode addMessage arguments first
+			 cell: aCell
+			 span: span)
+]
+
 { #category : 'initialization' }
 DdLayoutEditor >> setSource: aString [
-"When the source is a decompiled/flattened method, DdLayoutParser can still read it, but the
-model it builds then would sit on a fragment of AST that is disconnected from the method body
-the editor holds onto (ast) - so every subsequent edit would silently change that fragment while
-source/reparse/applyTo: kept serialising the original, untouched ast. To make edits real, ast
-itself is rebuilt into clean nested-cascade form here, once, before the model is built from it;
-from then on the model's nodes are genuine parts of ast, exactly as with ordinary source."
-
-"The method pattern is always the bare selector #defaultLayout throughout this whole class
-hierarchy, so it is written literally rather than sliced out of aString - the source's line
-ending (cr or lf, and this image uses lf) is not something safe to guess at and search for."
 
 	| candidate reconstructedExpression rebuilt |
 	candidate := RBParser parseMethod: aString.
@@ -240,7 +429,7 @@ ending (cr or lf, and this image uses lf) is not something safe to guess at and 
 					           'defaultLayout ^ ' , reconstructedExpression.
 				ast := rebuilt ]
 				on: Error
-				do: [ :error | "keep the original ast: reading still works, only self-healing is skipped"
+				do: [ :error | 
 					 ] ].
 	root := DdLayoutParser new parseMethodNode: ast
 ]
@@ -248,6 +437,22 @@ ending (cr or lf, and this image uses lf) is not something safe to guess at and 
 { #category : 'accessing' }
 DdLayoutEditor >> source [
 	^ ast formattedCode
+]
+
+{ #category : 'grid' }
+DdLayoutEditor >> swapGridCells: aSourcePath with: aSwapPath [
+"Exchanges the cells of the two widgets - each keeps its own span."
+
+	| node other nodeCell otherCell |
+	node := self nodeAt: aSourcePath.
+	other := self nodeAt: aSwapPath.
+	nodeCell := node gridPosition.
+	otherCell := other gridPosition.
+	(nodeCell isNil or: [ otherCell isNil ]) ifTrue: [
+		^ self error: 'Both widgets must already be in a grid to swap cells' ].
+	self setGridPositionOf: node to: otherCell.
+	self setGridPositionOf: other to: nodeCell.
+	self reparse
 ]
 
 { #category : 'accessing' }
@@ -266,16 +471,17 @@ DdLayoutEditor >> unknownVariablesIn: aClass [
 
 { #category : 'containers' }
 DdLayoutEditor >> wrapAt: aPath in: aKind [
-	"Replaces the node at aPath with a new container that holds it. The container takes the place
-	and the constraints of the node in its parent (expand:, width: ...); the node becomes a plain child.
-	Answers aPath, where the container now is."
+"Replaces the node at aPath with a new container that holds it. The container takes the place
+and the constraints of the node in its parent (expand:, width: ...); the node becomes a plain
+child - or, in a grid, the child of its first cell. Answers aPath, where the container now is."
 
-	| node parent index container originalMessage containerMessage plainMessage |
+	| node parent index container originalMessage containerMessage plainMessage isGrid |
 	node := self nodeAt: aPath.
 	parent := node parent.
 	parent ifNil: [ ^ self error: 'Cannot wrap the root' ].
 	index := parent children identityIndexOf: node.
 	container := self newContainerNodeOfKind: aKind.
+	isGrid := container isKindOf: DdGridNode.
 	originalMessage := node addMessage.
 	parent removeChild: node.
 	containerMessage := OCMessageNode
@@ -285,13 +491,23 @@ DdLayoutEditor >> wrapAt: aPath in: aKind [
 			                    { container addMessage arguments first }
 			                    , originalMessage arguments allButFirst asArray.
 	container addMessage: containerMessage.
-	plainMessage := OCMessageNode
-		                receiver: (OCVariableNode named: 'layout')
-		                selector: #add:
-		                arguments: { originalMessage arguments first }.
+	plainMessage := isGrid
+		                ifTrue: [
+				                self
+					                gridAddMessageFor:
+					                originalMessage arguments first
+					                cell: 1 @ 1
+					                span: nil ]
+		                ifFalse: [
+				                OCMessageNode
+					                receiver: (OCVariableNode named: 'layout')
+					                selector: #add:
+					                arguments: { originalMessage arguments first } ].
 	node addMessage: plainMessage.
 	parent insertChild: container at: index.
-	container insertChild: node at: 1.
+	isGrid
+		ifTrue: [ container insertChildDirectly: node ]
+		ifFalse: [ container insertChild: node at: 1 ].
 	self reparse.
 	^ aPath
 ]

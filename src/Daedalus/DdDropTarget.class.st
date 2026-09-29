@@ -5,7 +5,10 @@ Class {
 		'containerPath',
 		'index',
 		'indicator',
-		'isNoOp'
+		'isNoOp',
+		'cell',
+		'swapWithPath',
+		'point'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -13,52 +16,128 @@ Class {
 }
 
 { #category : 'accessing' }
+DdDropTarget >> cell [
+
+	^ cell
+]
+
+{ #category : 'accessing' }
+DdDropTarget >> cell: aPoint [
+
+	cell := aPoint
+]
+
+{ #category : 'accessing' }
 DdDropTarget >> containerPath [
+
 	^ containerPath
 ]
 
 { #category : 'accessing' }
-DdDropTarget >> containerPath: aPath [
-	containerPath := aPath
+DdDropTarget >> containerPath: arg1 [
+
+	containerPath := arg1
 ]
 
 { #category : 'accessing' }
 DdDropTarget >> index [
+
 	^ index
 ]
 
 { #category : 'accessing' }
-DdDropTarget >> index: anInteger [
-	index := anInteger
+DdDropTarget >> index: arg1 [
+
+	index := arg1
 ]
 
 { #category : 'accessing' }
 DdDropTarget >> indicator [
+
 	^ indicator
 ]
 
 { #category : 'accessing' }
-DdDropTarget >> indicator: aRectangle [
-	indicator := aRectangle
+DdDropTarget >> indicator: arg1 [
+
+	indicator := arg1
+]
+
+{ #category : 'testing' }
+DdDropTarget >> isCellTarget [
+"A drop into a grid cell (column@row) rather than at an index among siblings."
+
+	^ cell notNil
 ]
 
 { #category : 'accessing' }
 DdDropTarget >> isNoOp [
-"True when dropping here would put the dragged node exactly where it already is."
 
 	^ isNoOp == true
 ]
 
 { #category : 'accessing' }
-DdDropTarget >> isNoOp: aBoolean [
-	isNoOp := aBoolean
+DdDropTarget >> isNoOp: arg1 [
+
+	isNoOp := arg1
+]
+
+{ #category : 'testing' }
+DdDropTarget >> isPointTarget [
+"A drop at a free pixel position inside an absolute layout, rather than at an index or a grid cell."
+
+	^ point notNil
+]
+
+{ #category : 'testing' }
+DdDropTarget >> isSwap [
+"A drop onto a cell already taken by another widget of the same grid: the two exchange cells
+rather than one silently displacing the other."
+
+	^ swapWithPath notNil
+]
+
+{ #category : 'accessing' }
+DdDropTarget >> point [
+	^ point
+]
+
+{ #category : 'accessing' }
+DdDropTarget >> point: aPoint [
+	point := aPoint
 ]
 
 { #category : 'printing' }
 DdDropTarget >> printOn: aStream [
+
 	aStream
 		nextPutAll: 'DropTarget into ';
-		print: containerPath;
-		nextPutAll: ' at ';
-		print: index
+		print: containerPath.
+	self isCellTarget
+		ifTrue: [
+				aStream
+					nextPutAll: ' cell ';
+					print: cell ]
+		ifFalse: [
+				self isPointTarget
+					ifTrue: [
+							aStream
+								nextPutAll: ' point ';
+								print: point ]
+					ifFalse: [
+							aStream
+								nextPutAll: ' at ';
+								print: index ] ]
+]
+
+{ #category : 'accessing' }
+DdDropTarget >> swapWithPath [
+
+	^ swapWithPath
+]
+
+{ #category : 'accessing' }
+DdDropTarget >> swapWithPath: aPathOrNil [
+
+	swapWithPath := aPathOrNil
 ]

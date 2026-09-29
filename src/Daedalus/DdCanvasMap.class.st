@@ -88,6 +88,20 @@ DdCanvasMap >> isComplete [
 ]
 
 { #category : 'building' }
+DdCanvasMap >> liveChildrenOf: aLiveItem [
+"A box or paned keeps its children in an ordered list already. A grid keeps them in a
+dictionary (presenter -> constraints) - detected by duck-typing (responding to #keys) rather
+than a class check, since which exact Dictionary subclass Spec uses is not something to
+hard-code against; this only needs to enumerate the children, in whatever order, once."
+
+	| children |
+	children := aLiveItem children.
+	^ (children respondsTo: #keys)
+		  ifTrue: [ children keys asOrderedCollection asArray ]
+		  ifFalse: [ children ]
+]
+
+{ #category : 'building' }
 DdCanvasMap >> mapNode: aNode to: aLiveItem at: aPath [
 
 	| liveChildren |
@@ -96,7 +110,12 @@ DdCanvasMap >> mapNode: aNode to: aLiveItem at: aPath [
 	aLiveItem isSpLayout ifFalse: [
 			complete := false.
 			^ self ].
-	liveChildren := aLiveItem children.
+	liveChildren := [ self liveChildrenOf: aLiveItem ]
+		                on: Error
+		                do: [ :error | nil ].
+	liveChildren ifNil: [
+			complete := false.
+			^ self ].
 	liveChildren size = aNode children size ifFalse: [
 			complete := false.
 			^ self ].

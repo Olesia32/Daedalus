@@ -28,7 +28,7 @@ DdOpenInDesignerCommand class >> browserMenuActivation [
 		  for: ClyFullBrowserClassContext
 ]
 
-{ #category : 'execution' }
+{ #category : 'testing' }
 DdOpenInDesignerCommand class >> canBeExecutedInContext: aContext [
 "Returns true if the selected class inherits from SpPresenter, controlling menu item visibility."
 

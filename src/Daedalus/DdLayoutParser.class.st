@@ -8,7 +8,7 @@ Class {
 
 { #category : 'parsing' }
 DdLayoutParser >> containerClassFor: anExpression [
-	"The node class for a layout cascade we understand, or nil."
+"The node class for a layout cascade we understand, or nil."
 
 	| receiver name |
 	anExpression isCascade ifFalse: [ ^ nil ].
@@ -17,6 +17,8 @@ DdLayoutParser >> containerClassFor: anExpression [
 		^ nil ].
 	name := receiver receiver name.
 	name = 'SpBoxLayout' ifTrue: [ ^ DdBoxNode ].
+	name = 'SpGridLayout' ifTrue: [ ^ DdGridNode ].
+	name = 'DdAbsoluteLayout' ifTrue: [ ^ DdAbsoluteNode ].
 	name = 'SpPanedLayout' ifTrue: [ "first:/second: put children at fixed positions; editing them as an ordered list would change the meaning"
 			^ (self hasPositionalMessages: anExpression)
 				  ifTrue: [ nil ]
@@ -67,6 +69,7 @@ DdLayoutParser >> parseBox: aCascade addMessage: aMessage [
 
 { #category : 'parsing' }
 DdLayoutParser >> parseContainer: aClass cascade: aCascade addMessage: aMessage [
+
 	| container |
 	container := aClass new
 		             cascade: aCascade;
@@ -79,7 +82,8 @@ DdLayoutParser >> parseContainer: aClass cascade: aCascade addMessage: aMessage 
 						container addChild:
 							(self parseExpression: each arguments first addMessage: each) ]
 				ifFalse: [
-						each selector = #yourself ifFalse: [
+						(each selector = #yourself or: [
+							 container isAnchorSelector: each selector ]) ifFalse: [
 							container addPropertyMessage: each ] ] ].
 	^ container
 ]
