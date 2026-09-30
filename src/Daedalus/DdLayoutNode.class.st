@@ -11,6 +11,52 @@ Class {
 }
 
 { #category : 'parsing' }
+DdLayoutNode class >> blockMessagesOf: aBlockNode [
+	"The messages a constraints block sends to its argument: [ :c | c expand: false; padding: 2 ]
+or [ :c | c expand: false. c padding: 2 ]. Answers nil for anything else."
+
+	| argumentName messages |
+	(aBlockNode isBlock and: [ aBlockNode arguments size = 1 ]) ifFalse: [
+		^ nil ].
+	argumentName := aBlockNode arguments first name.
+	messages := OrderedCollection new.
+	aBlockNode body statements do: [ :statement |
+			| receiver |
+			receiver := statement isCascade
+				            ifTrue: [ statement receiver ]
+				            ifFalse: [
+				            statement isMessage ifTrue: [ statement receiver ] ].
+			(receiver notNil and: [
+				 receiver isVariable and: [ receiver name = argumentName ] ])
+				ifFalse: [ ^ nil ].
+			statement isCascade
+				ifTrue: [ messages addAll: statement messages ]
+				ifFalse: [ messages add: statement ] ].
+	^ messages
+]
+
+{ #category : 'parsing' }
+DdLayoutNode class >> blockSource: aCollectionOfStrings [
+"[ :constraints | constraints a; b ] as a parsed block node."
+
+	^ OCParser parseExpression:
+		  '[ :constraints | constraints '
+		  , ('; ' join: aCollectionOfStrings) , ' ]'
+]
+
+{ #category : 'parsing' }
+DdLayoutNode class >> pointFromNode: anExpression [
+"10 @ 20 written in the code -> 10@20, or nil when it is not a literal point."
+
+	(anExpression notNil and: [
+		 anExpression isMessage and: [ anExpression selector = #@ ] ])
+		ifFalse: [ ^ nil ].
+	(anExpression receiver isLiteralNode and: [
+		 anExpression arguments first isLiteralNode ]) ifFalse: [ ^ nil ].
+	^ anExpression receiver value @ anExpression arguments first value
+]
+
+{ #category : 'parsing' }
 DdLayoutNode class >> pointFromText: aString [
 	"'2 @ 1' or '2@1' (spacing depends on the formatter) -> 2@1, or nil when it is not a plain literal point."
 
@@ -51,6 +97,12 @@ DdLayoutNode >> addMessage: aMessageNode [
 	addMessage := aMessageNode
 ]
 
+{ #category : 'constraints' }
+DdLayoutNode >> addMessageFor: aChild values: aDictionary [
+
+	^ self error: self kindLabel , ' has no constraints to set'
+]
+
 { #category : 'accessing' }
 DdLayoutNode >> addSelector [
 	^ addMessage ifNotNil: [ :m | m selector ]
@@ -83,6 +135,13 @@ DdLayoutNode >> canMoveUp [
 				  (parent children identityIndexOf: self) > 1 ] ]
 ]
 
+{ #category : 'resizing' }
+DdLayoutNode >> childResizeHandles [
+"The resize handles a child of this node gets on the canvas. Only containers have children."
+
+	^ #(  )
+]
+
 { #category : 'accessing' }
 DdLayoutNode >> children [
 
@@ -104,6 +163,21 @@ DdLayoutNode >> constraintArguments [
 			  (m arguments allButFirst collect: [ :each | each formattedCode ]) asArray ]
 ]
 
+{ #category : 'constraints' }
+DdLayoutNode >> constraintPropertiesFor: aChild [
+"How aChild sits in this container, as editable properties. None by default."
+
+	^ #(  )
+]
+
+{ #category : 'constraints' }
+DdLayoutNode >> constraintValuesOf: aChild [
+"Key -> value for every constraint property, read from aChild's add-message; nil when that
+message is written in a form the designer cannot edit safely."
+
+	^ Dictionary new
+]
+
 { #category : 'labels' }
 DdLayoutNode >> constraintsLabel [
 "Everything the parent's add-message says about this node besides the node itself"
@@ -116,6 +190,28 @@ DdLayoutNode >> constraintsLabel [
 			    with: self constraintArguments
 			    collect: [ :keyword :value | keyword , ' ' , value ]))
 		  withSeparatorsCompacted
+]
+
+{ #category : 'searching' }
+DdLayoutNode >> deepestContainerContaining: aPoint rectangles: aOneArgBlock [
+
+	| best |
+	best := nil.
+	self allNodesDo: [ :node |
+			node isContainerNode ifTrue: [
+					((aOneArgBlock value: node path)
+						 ifNil: [ false ]
+						 ifNotNil: [ :rect | rect containsPoint: aPoint ]) ifTrue: [
+							(best isNil or: [ node path size > best size ]) ifTrue: [
+								best := node path ] ] ] ].
+	^ best
+]
+
+{ #category : 'as yet unclassified' }
+DdLayoutNode >> displayLabel [
+	"What the component tree shows. Defaults to the full label."
+
+	^ self treeLabel
 ]
 
 { #category : 'searching' }
@@ -181,6 +277,13 @@ DdLayoutNode >> labelForMessage: aMessage [
 		  withSeparatorsCompacted
 ]
 
+{ #category : 'properties' }
+DdLayoutNode >> layoutProperties [
+"The properties of this layout that the designer can edit (see DdLayoutProperty)."
+
+	^ #(  )
+]
+
 { #category : 'navigation' }
 DdLayoutNode >> nodeAtPath: aPath [
 "The node reached from the receiver through the child indexes in aPath."
@@ -217,16 +320,29 @@ DdLayoutNode >> printTreeOn: aStream indent: n [
 
 { #category : 'editing' }
 DdLayoutNode >> replaceAddMessageWith: aNewMessageNode [
-"Splices aNewMessageNode into the parent's cascade at the exact spot the receiver's own
-add-message currently occupies, and makes it the receiver's add-message from now on."
 
 	| index |
 	index := parent cascade messages identityIndexOf: addMessage.
 	index = 0 ifTrue: [
 		^ self error: 'Add-message not found in parent cascade' ].
+	aNewMessageNode receiver: parent cascade receiver copy.
 	aNewMessageNode parent: parent cascade.
 	parent cascade messages at: index put: aNewMessageNode.
 	addMessage := aNewMessageNode
+]
+
+{ #category : 'resizing' }
+DdLayoutNode >> resizeHandles [
+
+	^ parent
+		  ifNil: [ #(  ) ]
+		  ifNotNil: [ :container | container resizeHandlesFor: self ]
+]
+
+{ #category : 'resizing' }
+DdLayoutNode >> resizeHandlesFor: aChild [
+
+	^ self childResizeHandles
 ]
 
 { #category : 'labels' }

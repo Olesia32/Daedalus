@@ -105,30 +105,51 @@ DdPropertyPanelPresenter >> initializePresenters [
 	descriptorPanel := SpNotebookPresenter new.
 ]
 
+{ #category : 'layout' }
+DdPropertyPanelPresenter >> layoutPage [
+"Content of the Layout tab: built by the designer from the selected widget's node."
+
+	| designer path |
+	designer := canvas ifNotNil: [ :aCanvas | aCanvas designer ].
+	designer ifNil: [
+			^ SpLabelPresenter new
+				  label: 'No layout information';
+				  yourself ].
+	path := designer selectedNodePath.
+	path ifNil: [
+			^ SpLabelPresenter new
+				  label: 'This widget is not placed by defaultLayout';
+				  yourself ].
+	^ designer layoutPageForPath: path
+]
+
 { #category : 'testing' }
 DdPropertyPanelPresenter >> rebuildDescriptorPanel [
-"Resolves the descriptor for subPresenter, rebuilds the notebook tabs with fresh Properties and Style panels, and updates the layout."
+	"Resolves the descriptor for subPresenter, rebuilds the notebook tabs with fresh Properties and Style panels, and updates the layout."
 
-    subPresenter ifNil: [ ^ self ].
-    descriptor := DdPropertyDescriptor forPresenter: subPresenter.
-    descriptor ifNil: [ ^ self ].
+	subPresenter ifNil: [ ^ self ].
+	descriptor := DdPropertyDescriptor forPresenter: subPresenter.
+	descriptor ifNil: [ ^ self ].
 
-    descriptorPanel := SpNotebookPresenter new.
+	descriptorPanel := SpNotebookPresenter new.
 
-    descriptorPanel
-        addPage: (SpNotebookPage
-            title: 'Properties'
-            provider: [
-                | inner |
-                inner := descriptor buildPanelFor: subPresenter.
-                SpPresenter new
-                    layout: (SpScrollableLayout new child: inner layout; yourself);
-                    yourself ]);
-        addPage: (SpNotebookPage
-            title: 'Style'
-            provider: [ descriptor buildStylePanelFor: subPresenter ]).
+	descriptorPanel
+		addPage: (SpNotebookPage title: 'Properties' provider: [
+						 | inner |
+						 inner := descriptor buildPanelFor: subPresenter.
+						 SpPresenter new
+							 layout: (SpScrollableLayout new
+									  child: inner layout;
+									  yourself);
+							 yourself ]);
+		addPage: (SpNotebookPage
+			title: 'Style'
+			provider: [ descriptor buildStylePanelFor: subPresenter ]);
+		addPage: (SpNotebookPage
+			title: 'Layout'
+			provider: [ self layoutPage ]).
 
-    self rebuildLayout
+	self rebuildLayout
 ]
 
 { #category : 'private' }

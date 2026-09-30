@@ -19,6 +19,8 @@ DdLayoutParser >> containerClassFor: anExpression [
 	name = 'SpBoxLayout' ifTrue: [ ^ DdBoxNode ].
 	name = 'SpGridLayout' ifTrue: [ ^ DdGridNode ].
 	name = 'DdAbsoluteLayout' ifTrue: [ ^ DdAbsoluteNode ].
+	name = 'SpScrollableLayout' ifTrue: [ ^ DdScrollNode ].
+	name = 'SpOverlayLayout' ifTrue: [ ^ DdOverlayNode ].
 	name = 'SpPanedLayout' ifTrue: [ "first:/second: put children at fixed positions; editing them as an ordered list would change the meaning"
 			^ (self hasPositionalMessages: anExpression)
 				  ifTrue: [ nil ]
@@ -69,6 +71,8 @@ DdLayoutParser >> parseBox: aCascade addMessage: aMessage [
 
 { #category : 'parsing' }
 DdLayoutParser >> parseContainer: aClass cascade: aCascade addMessage: aMessage [
+"Which messages add a child is up to the container (add:... for most, child:/addOverlay: for
+scroll and overlay)."
 
 	| container |
 	container := aClass new
@@ -77,7 +81,7 @@ DdLayoutParser >> parseContainer: aClass cascade: aCascade addMessage: aMessage 
 		             factorySelector: aCascade receiver selector;
 		             yourself.
 	aCascade messages do: [ :each |
-			(self isAddMessage: each)
+			(container isChildMessage: each)
 				ifTrue: [
 						container addChild:
 							(self parseExpression: each arguments first addMessage: each) ]

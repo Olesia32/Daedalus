@@ -21,31 +21,57 @@ Class {
 		'editedPresenter',
 		'previewPresenter',
 		'rootPreviewPresenter',
-		'presenterIndex',
 		'selectedPresenter',
 		'designer',
 		'selectionOverlay',
 		'shieldMorph',
-		'containerOutlineOverlay'
+		'containerOutlineOverlay',
+		'surfaceMorph',
+		'surfacePresenter',
+		'formExtent',
+		'selectedContainerPath'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
 	#tag : 'Daedalus-UI'
 }
 
-{ #category : 'as yet unclassified' }
+{ #category : 'instance creation' }
 DdCanvasPresenter class >> onPresenter: aPresenter [
-    "Creates and opens a new canvas for aPresenter, returning the configured instance."
-^ self new
-        editedPresenter: aPresenter;
-        yourself.
+"The colors are applied once the canvas has a morph of its own; rebuildPreview/refreshPreview
+apply them again whenever the preview morphs are replaced."
+
+	| canvas |
+	canvas := self new.
+	canvas whenBuiltDo: [ canvas applyCanvasColors ].
+	canvas editedPresenter: aPresenter.
+	^ canvas
 ]
 
-{ #category : 'as yet unclassified' }
-DdCanvasPresenter >> clearOverlay [
-    selectionOverlay ifNotNil: [ 
-        selectionOverlay delete.
-        selectionOverlay := nil ].
+{ #category : 'appearance' }
+DdCanvasPresenter >> applyCanvasColors [
+
+	
+]
+
+{ #category : 'selection' }
+DdCanvasPresenter >> clearContainerSelection [
+
+	selectedContainerPath := nil
+]
+
+{ #category : 'selection' }
+DdCanvasPresenter >> containerMorphAt: aPath [
+
+	| root |
+	(designer isNil or: [ rootPreviewPresenter isNil ]) ifTrue: [ ^ nil ].
+	root := designer componentTree rootNode.
+	root ifNil: [ ^ nil ].
+	^ [
+		  (DdCanvasMap presenter: rootPreviewPresenter model: root)
+			  morphAt: aPath ]
+		  on: Error
+		  do: [ nil ]
 ]
 
 { #category : 'selection' }
@@ -158,6 +184,33 @@ hides it until a live preview actually exists, and keeps it positioned over that
 	World ifNotNil: [ :w | w addMorphFront: shieldMorph ]
 ]
 
+{ #category : 'appearance' }
+DdCanvasPresenter >> ensureSurfaceLayout [
+"The canvas's own layout is built once: a single morph presenter holding the surface. Rebuilding
+the preview after that only swaps the morph lying on the surface."
+
+	surfacePresenter ifNotNil: [ ^ self ].
+	surfacePresenter := self newMorph.
+	surfacePresenter morph: self surfaceMorph.
+	self layout: (SpBoxLayout new
+			 add: surfacePresenter;
+			 yourself)
+]
+
+{ #category : 'appearance' }
+DdCanvasPresenter >> formExtent [
+"The size the form is shown at. A fixed default for now; a resize handle on the form can set it."
+
+	^ formExtent ifNil: [ 480 @ 360 ]
+]
+
+{ #category : 'appearance' }
+DdCanvasPresenter >> formExtent: aPoint [
+
+	formExtent := aPoint.
+	surfaceMorph ifNotNil: [ :surface | surface syncPreview ]
+]
+
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> instVarNameForPresenterInRoot: aPresenter [
 "Returns the instance variable name under which aPresenter is stored in rootPreviewPresenter, or nil if not found."
@@ -192,38 +245,6 @@ DdCanvasPresenter >> installClickHooks [
 ]
 
 { #category : 'as yet unclassified' }
-DdCanvasPresenter >> installInteractionOverlay [
-	"Spike/slice-12 wiring: builds a fresh DdCanvasMap and drops a single DdInteractionOverlayMorph
-on top of the preview window, replacing per-widget mouseDown hooks for selection/drag purposes.
-onSelect:/onDrop: are left as simple logging for now; slice 13 wires onDrop: to
-DdLayoutEditor moveAt:toBoxAt:index: plus a single compile:.
-Call again after refreshPreview/rebuildPreview: the overlay is tied to the current top morph."
-
-	| top map overlay world |
-	top := rootPreviewPresenter adapter
-		       ifNil: [ ^ self ]
-		       ifNotNil: [ :a | a widget ].
-	top ifNil: [ ^ self ].
-	world := top world.
-	world ifNil: [ ^ self ].
-	map := DdCanvasMap
-		       presenter: rootPreviewPresenter
-		       model: designer componentTree rootNode.
-	overlay := DdInteractionOverlayMorph canvasMap: map top: top.
-	overlay
-		onSelect: [ :path |
-				Transcript
-					show: 'selected ';
-					show: path printString ];
-		onDrop: [ :from :target |
-				Transcript
-					show: from printString , ' -> ';
-					show: target printString ].
-	world addMorphFront: overlay.
-	overlay syncBounds
-]
-
-{ #category : 'as yet unclassified' }
 DdCanvasPresenter >> presenterFromMorphWithoutModel: aMorph [
 "Walks up the morph ownership chain from aMorph, searching allPresenters 
 for a presenter whose adapter widget matches. Returns the found presenter or nil."
@@ -238,12 +259,6 @@ for a presenter whose adapter widget matches. Returns the found presenter or nil
     ^ result
 ]
 
-{ #category : 'accessing' }
-DdCanvasPresenter >> presenterIndex [
-
-	^ presenterIndex
-]
-
 { #category : 'selection' }
 DdCanvasPresenter >> previewContainerMorph [
 "The top morph of the current preview - the shield mirrors its bounds and sits right in front
@@ -255,52 +270,67 @@ of it, so nothing underneath (its widgets) ever sees a mouseDown."
 		  p adapter ifNil: [ nil ] ifNotNil: [ :a | a widget ] ]
 ]
 
+{ #category : 'appearance' }
+DdCanvasPresenter >> reapplyCanvasColors [
+"Now and once more on the next UI cycle, in case Spec builds the new morphs a little later."
+
+	self applyCanvasColors.
+	UIManager default defer: [ self applyCanvasColors ]
+]
+
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> rebuildPreview [
+"A fresh preview instance, laid on the grid surface at its own size."
 
-	| tmp1 tmp2 |
-	tmp1 := editedPresenter class new.
-	tmp1 build.
-	rootPreviewPresenter := tmp1.
-	tmp2 := SpBoxLayout new.
-	tmp2
-		spacing: 30;
-		add: rootPreviewPresenter.
-	self
-		layout: tmp2 yourself;
-		installClickHooks
+	| preview |
+	preview := editedPresenter class new.
+	preview build.
+	rootPreviewPresenter := preview.
+	self ensureSurfaceLayout.
+	self surfaceMorph syncPreview.
+	self installClickHooks.
+	self reapplyCanvasColors.
+	designer ifNotNil: [ :aDesigner | aDesigner recordHistory ]
 ]
 
 { #category : 'accessing' }
 DdCanvasPresenter >> refreshPreview [
-	"Re-runs initializePresenters and defaultLayout on the existing root preview instance, rebuilds the index, restores the previously
-selected presenters by variable name, and reinstalls click hooks."
+"Re-runs initializePresenters and defaultLayout on the existing root preview instance, restores
+the selection by variable name, puts the (possibly new) preview morph back on the surface and
+reinstalls click hooks."
 
-	| subVarName presenterVarName |
+	| subVarName |
 	subVarName := selectedPresenter ifNotNil: [
 		              self instVarNameForPresenterInRoot: selectedPresenter ].
-
 	SpNullApplication skipReset: true.
 	[
 		rootPreviewPresenter initializePresenters.
 		rootPreviewPresenter layout: rootPreviewPresenter defaultLayout ]
 		ensure: [ SpNullApplication skipReset: false ].
-
 	subVarName ifNotNil: [
 			| idx |
 			idx := rootPreviewPresenter class allInstVarNames indexOf:
 				       subVarName.
 			idx > 0 ifTrue: [
 				selectedPresenter := rootPreviewPresenter instVarAt: idx ] ].
-
+	self surfaceMorph syncPreview.
 	self installClickHooks.
-	designer ifNotNil: [ designer onSelectionChanged ]
+	self reapplyCanvasColors.
+	designer ifNotNil: [ designer onSelectionChanged ].
+	designer ifNotNil: [ :aDesigner | aDesigner recordHistory ]
 ]
 
 { #category : 'accessing' }
 DdCanvasPresenter >> rootPreviewPresenter [
 
 	^ rootPreviewPresenter
+]
+
+{ #category : 'selection' }
+DdCanvasPresenter >> selectContainerAt: aPath [
+"A container is selected instead of a widget: the frame and the resize handles follow it."
+
+	selectedContainerPath := aPath
 ]
 
 { #category : 'selection' }
@@ -318,10 +348,35 @@ DdCanvasPresenter >> selectWidgetNamed: aVarName [
 	^ true
 ]
 
+{ #category : 'selection' }
+DdCanvasPresenter >> selectedContainerPath [
+
+	^ selectedContainerPath
+]
+
 { #category : 'accessing' }
 DdCanvasPresenter >> selectedPresenter [
 
 	^ selectedPresenter
+]
+
+{ #category : 'selection' }
+DdCanvasPresenter >> selectedResizeHandles [
+	"The resize handles of the selection (a container or a widget), from its node in the tree's model."
+
+	| root varName node |
+	designer ifNil: [ ^ #(  ) ].
+	root := designer componentTree rootNode.
+	root ifNil: [ ^ #(  ) ].
+	selectedContainerPath ifNotNil: [ :path |
+			^ [ (root nodeAtPath: path) resizeHandles ]
+				  on: Error
+				  do: [ #(  ) ] ].
+	selectedPresenter ifNil: [ ^ #(  ) ].
+	varName := self instVarNameForPresenterInRoot: selectedPresenter.
+	varName ifNil: [ ^ #(  ) ].
+	node := root findWidgetNamed: varName.
+	^ node ifNil: [ #(  ) ] ifNotNil: [ :aNode | aNode resizeHandles ]
 ]
 
 { #category : 'selection' }
@@ -337,13 +392,33 @@ DdCanvasPresenter >> selectedWidgetMorph [
 { #category : 'selection' }
 DdCanvasPresenter >> selectionOverlay [
 
-	| tmp1 |
-	^ selectionOverlay
-		  ifNil: [
-				  tmp1 := DdSelectionGlassMorph new.
-				  tmp1 targetProvider: [ self selectedWidgetMorph ].
-				  selectionOverlay := tmp1 yourself ]
-		  ifNotNil: [ selectionOverlay ]
+	^ selectionOverlay ifNil: [
+			  selectionOverlay := DdSelectionGlassMorph new
+				                      targetProvider: [ self selectionTargetMorph ];
+				                      handlesProvider: [
+					                      self selectedResizeHandles ];
+				                      yourself ]
+]
+
+{ #category : 'selection' }
+DdCanvasPresenter >> selectionTargetMorph [
+"What the selection frame goes around: the selected container, or else the selected widget."
+
+	selectedContainerPath ifNotNil: [ :path |
+		^ self containerMorphAt: path ].
+	^ self selectedWidgetMorph
+]
+
+{ #category : 'appearance' }
+DdCanvasPresenter >> sheetColor [
+"The form's own background: light grey like a window pane on a light theme, so white fields and
+lists stand out on it."
+
+	| base |
+	base := Smalltalk ui theme backgroundColor.
+	^ base luminance > 0.5
+		  ifTrue: [ Color gray: 0.88 ]
+		  ifFalse: [ base ]
 ]
 
 { #category : 'selection' }
@@ -351,6 +426,7 @@ DdCanvasPresenter >> shieldMouseDown: anEvent [
 
 	| point candidates best area bestArea |
 	rootPreviewPresenter ifNil: [ ^ self ].
+	(designer notNil and: [ designer isResizing ]) ifTrue: [ ^ self ].
 	point := anEvent position.
 	candidates := rootPreviewPresenter allPresenters select: [ :p |
 			              p adapter notNil and: [
@@ -380,17 +456,29 @@ DdCanvasPresenter >> shieldMouseDown: anEvent [
 		anEvent wasHandled: true ]
 ]
 
-{ #category : 'accessing' }
-DdCanvasPresenter >> showOverlayFor: aMorph [
-    | world morphBounds |
-    selectionOverlay ifNotNil: [ selectionOverlay delete ].
-    world := self adapter ifNotNil: [ :a | a widget world ] ifNil: [ nil ].
-    world ifNil: [ ^ self ].
-    morphBounds := aMorph bounds.
-    selectionOverlay := DdSelectionOverlayMorph new
-        initializeFor: aMorph.
-    selectionOverlay bounds: morphBounds.
-    world addMorph: selectionOverlay.
+{ #category : 'appearance' }
+DdCanvasPresenter >> surfaceMorph [
+
+	^ surfaceMorph ifNil: [
+			  surfaceMorph := DdCanvasSurfaceMorph new.
+			  surfaceMorph
+				  previewProvider: [ self previewContainerMorph ];
+				  extentProvider: [ self formExtent ];
+				  hResizing: #spaceFill;
+				  vResizing: #spaceFill.
+			  surfaceMorph ]
+]
+
+{ #category : 'appearance' }
+DdCanvasPresenter >> surroundColor [
+"The work surface around the form: the sheet color pushed towards black on a light theme and
+towards white on a dark one, so the edge of the form is always visible."
+
+	| base |
+	base := self sheetColor.
+	^ base mixed: 0.8 with: (base luminance > 0.5
+			   ifTrue: [ Color black ]
+			   ifFalse: [ Color white ])
 ]
 
 { #category : 'selection' }
@@ -402,11 +490,6 @@ itself, the same way updateSelectionOverlay does for the selection frame."
 	world := self adapter ifNotNil: [ :anAdapter |
 		         anAdapter widget ifNotNil: [ :morph | morph world ] ].
 	self containerOutlineOverlay showIn: world
-]
-
-{ #category : 'as yet unclassified' }
-DdCanvasPresenter >> updateOverlay [
-    selectionOverlay ifNotNil: [ selectionOverlay update ]
 ]
 
 { #category : 'selection' }

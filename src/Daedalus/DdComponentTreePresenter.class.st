@@ -40,27 +40,6 @@ DdComponentTreePresenter >> addContainerToSelection [
 		with: [ :editor :path | editor addContainer: kind near: path ]
 ]
 
-{ #category : 'canvas' }
-DdComponentTreePresenter >> containerOutlineEntries: aLivePresenter [
-
-	| root map entries |
-	presenterClass ifNil: [ ^ #(  ) ].
-	root := [ (DdLayoutEditor forClass: presenterClass) root ]
-		        on: Error
-		        do: [ nil ].
-	root ifNil: [ ^ #(  ) ].
-	map := [ DdCanvasMap presenter: aLivePresenter model: root ]
-		       on: Error
-		       do: [ nil ].
-	map ifNil: [ ^ #(  ) ].
-	entries := OrderedCollection new.
-	root allNodesDo: [ :node |
-			node isContainerNode ifTrue: [
-					(map boundsAt: node path) ifNotNil: [ :rect |
-						entries add: rect -> node kindLabel ] ] ].
-	^ entries
-]
-
 { #category : 'layout' }
 DdComponentTreePresenter >> defaultLayout [
 
@@ -130,11 +109,12 @@ DdComponentTreePresenter >> editSelection: aBlock [
 
 { #category : 'initialization' }
 DdComponentTreePresenter >> initializePresenters [
+
 	super initializePresenters.
 	treePresenter := self newTree.
 	treePresenter
 		children: [ :node | node children ];
-		display: [ :node | node treeLabel ].
+		display: [ :node | node displayLabel ].
 	upButton := self newButton.
 	upButton
 		label: 'Up';

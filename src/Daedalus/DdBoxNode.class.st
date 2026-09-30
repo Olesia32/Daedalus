@@ -18,6 +18,59 @@ DdBoxNode >> addChild: aNode [
 	^ children add: aNode
 ]
 
+{ #category : 'constraints' }
+DdBoxNode >> addMessageFor: aChild values: aDictionary [
+"The shortest form Spec understands. A fixed size already means expand: false."
+
+	| argument expand fill padding size selector arguments parts |
+	argument := aChild addMessage arguments first.
+	expand := aDictionary at: #expand.
+	fill := aDictionary at: #fill.
+	padding := aDictionary at: #padding.
+	size := aDictionary at: self sizeKey.
+	size
+		ifNil: [
+				(fill and: [ padding = 0 ])
+					ifTrue: [
+							expand
+								ifTrue: [
+										selector := #add:.
+										arguments := {  } ]
+								ifFalse: [
+										selector := #add:expand:.
+										arguments := { false } ] ]
+					ifFalse: [
+							selector := #add:expand:fill:padding:.
+							arguments := {
+								             expand.
+								             fill.
+								             padding } ] ]
+		ifNotNil: [
+				(fill and: [ padding = 0 ])
+					ifTrue: [
+							selector := self sizeKey = #height
+								            ifTrue: [ #add:height: ]
+								            ifFalse: [ #add:width: ].
+							arguments := { size } ]
+					ifFalse: [
+							parts := OrderedCollection new.
+							parts add: self sizeKey , ': ' , size printString.
+							fill ifFalse: [ parts add: 'fill: false' ].
+							padding = 0 ifFalse: [
+								parts add: 'padding: ' , padding printString ].
+							^ OCMessageNode
+								  receiver: (OCVariableNode named: 'layout')
+								  selector: #add:withConstraints:
+								  arguments: {
+										  argument.
+										  (DdLayoutNode blockSource: parts) } ] ].
+	^ OCMessageNode
+		  receiver: (OCVariableNode named: 'layout')
+		  selector: selector
+		  arguments: { argument } , (arguments collect: [ :each |
+				   OCParser parseExpression: each printString ])
+]
+
 { #category : 'adding' }
 DdBoxNode >> addPropertyMessage: aMessage [
 	propertyMessages add: aMessage
@@ -38,9 +91,105 @@ DdBoxNode >> cascade: aNode [
 	cascade := aNode
 ]
 
+{ #category : 'resizing' }
+DdBoxNode >> childResizeHandles [
+"A box sizes its children only along its own direction: height: in a vertical box, width: in a
+horizontal one."
+
+	^ self isHorizontal
+		  ifTrue: [ #( #right ) ]
+		  ifFalse: [ #( #bottom ) ]
+]
+
 { #category : 'accessing' }
 DdBoxNode >> children [
 	^ children
+]
+
+{ #category : 'constraints' }
+DdBoxNode >> constraintPropertiesFor: aChild [
+
+	^ {
+		  (DdConstraintProperty
+			   key: #expand
+			   label: 'Expand'
+			   kind: #boolean
+			   default: true).
+		  (DdConstraintProperty
+			   key: #fill
+			   label: 'Fill'
+			   kind: #boolean
+			   default: true).
+		  (DdConstraintProperty
+			   key: #padding
+			   label: 'Padding'
+			   kind: #number
+			   default: 0).
+		  (DdConstraintProperty
+			   key: self sizeKey
+			   label: (self isHorizontal
+					    ifTrue: [ 'Width' ]
+					    ifFalse: [ 'Height' ])
+			   kind: #number
+			   default: nil) }
+]
+
+{ #category : 'constraints' }
+DdBoxNode >> constraintValuesOf: aChild [
+
+	| message selector arguments values literal |
+	values := Dictionary new.
+	values
+		at: #expand put: true;
+		at: #fill put: true;
+		at: #padding put: 0;
+		at: self sizeKey put: nil.
+	message := aChild addMessage.
+	selector := message selector.
+	arguments := message arguments allButFirst.
+	literal := [ :node |
+		           node isLiteralNode
+			           ifTrue: [ node value ]
+			           ifFalse: [ ^ nil ] ].
+	selector = #add: ifTrue: [ ^ values ].
+	(#( #add:expand: #add:expand:fill: #add:expand:fill:padding: )
+		 includes: selector) ifTrue: [
+			#( #expand #fill #padding )
+				with: (arguments , #( nil nil nil ) first: 3)
+				do: [ :key :node |
+					node ifNotNil: [ values at: key put: (literal value: node) ] ].
+			^ values ].
+	(#( #add:height: #add:width: ) includes: selector) ifTrue: [
+			selector = #add:height: = (self sizeKey = #height) ifTrue: [
+				values at: self sizeKey put: (literal value: arguments first) ].
+			values at: #expand put: false.
+			^ values ].
+	selector = #add:withConstraints: ifTrue: [
+			(DdLayoutNode blockMessagesOf: arguments first)
+				ifNil: [ ^ nil ]
+				ifNotNil: [ :messages |
+						messages do: [ :each |
+								(#( #expand: #fill: #padding: #height: #width: ) includes:
+									 each selector) ifFalse: [ ^ nil ].
+								each selector = #height: | (each selector = #width:)
+									ifTrue: [
+											values at: #expand put: false.
+											each selector allButLast asSymbol = self sizeKey ifTrue: [
+												values
+													at: self sizeKey
+													put: (literal value: each arguments first) ] ]
+									ifFalse: [
+											values
+												at: each selector allButLast asSymbol
+												put: (literal value: each arguments first) ] ].
+						^ values ] ].
+	^ nil
+]
+
+{ #category : 'as yet unclassified' }
+DdBoxNode >> displayLabel [
+
+	^ self kindLabel
 ]
 
 { #category : 'accessing' }
@@ -91,6 +240,15 @@ DdAbsoluteNode) overrides this to say so."
 ]
 
 { #category : 'testing' }
+DdBoxNode >> isChildMessage: aMessage [
+"Whether aMessage of this container's cascade adds a child (as opposed to setting a property).
+Box, paned, grid and absolute all add with add:...; scroll and overlay override this."
+
+	^ (aMessage selector beginsWith: 'add:') and: [
+		  aMessage arguments notEmpty ]
+]
+
+{ #category : 'testing' }
 DdBoxNode >> isContainerNode [
 	^ true
 ]
@@ -108,6 +266,19 @@ DdBoxNode >> kindLabel [
 	factorySelector = #newLeftToRight ifTrue: [ ^ 'Horizontal box' ].
 	factorySelector = #newTopToBottom ifTrue: [ ^ 'Vertical box' ].
 	^ 'Box'
+]
+
+{ #category : 'properties' }
+DdBoxNode >> layoutProperties [
+
+	^ {
+		  (DdLayoutProperty number: 'Spacing' selector: #spacing:).
+		  (DdLayoutProperty number: 'Border width' selector: #borderWidth:).
+		  (DdLayoutProperty
+			   flag: 'Same size for all children'
+			   on: #beHomogeneous
+			   off: #beNotHomogeneous
+			   default: false) }
 ]
 
 { #category : 'editing' }
@@ -128,16 +299,12 @@ DdBoxNode >> messageIndexForInsertionAt: anIndex [
 
 { #category : 'editing' }
 DdBoxNode >> newAddMessageFor: aNode [
-"The message that will insert aNode into this container's cascade. A plain box keeps the
-selector and arguments (constraints) of the node's own add-message, EXCEPT when that selector
-is grid-only (atPoint:/atPoint:span:, or the deprecated at:/at:span:) - a Box cannot accept a
-cell position, so it falls back to a plain add: instead, same as moving out of a paned already
-drops its constraints."
 
 	| selector |
 	selector := aNode addSelector.
-	(#( #add:atPoint: #add:atPoint:span: #add:at: #add:at:span: )
-		 includes: selector) ifTrue: [
+	(#( #add:atPoint: #add:atPoint:span: #add:at: #add:at:span:
+	    #child: #addOverlay: #addOverlay:withConstraints: ) includes:
+		 selector) ifTrue: [
 			^ OCMessageNode
 				  receiver: cascade receiver copy
 				  selector: #add:
@@ -185,6 +352,14 @@ messages. Harmless: 'yourself; yourself' still yields the same object."
 	children removeAt: index.
 	aNode parent: nil.
 	^ aNode
+]
+
+{ #category : 'constraints' }
+DdBoxNode >> sizeKey [
+
+	^ self isHorizontal
+		  ifTrue: [ #width ]
+		  ifFalse: [ #height ]
 ]
 
 { #category : 'labels' }

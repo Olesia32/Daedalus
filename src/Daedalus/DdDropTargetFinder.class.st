@@ -47,11 +47,12 @@ DdDropTargetFinder >> cellTargetIn: aGrid at: aPoint dragging: aDragged [
 
 	| entries found cell occupantEntry occupant swapPath isNoOp |
 	entries := OrderedCollection new.
-	entries addAll: (aGrid children select: [ :child |
-				 | position rectangle |
-				 position := child gridPosition.
-				 rectangle := rectangleAt value: child path.
-				 position notNil and: [ rectangle notNil ] ]).
+	aGrid children do: [ :child |
+		| position rectangle |
+		position := child gridPosition.
+		rectangle := rectangleAt value: child path.
+		(position notNil and: [ rectangle notNil ]) ifTrue: [
+			entries add: { position. child gridSpan. rectangle. child } ] ].
 	found := DdGridGeometry
 		         cellAt: aPoint
 		         entries: entries

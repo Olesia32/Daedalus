@@ -6,6 +6,12 @@ Class {
 	#tag : 'Daedalus-LayoutModel'
 }
 
+{ #category : 'accessing' }
+DdWidgetNode >> displayLabel [
+
+	^ self varName
+]
+
 { #category : 'testing' }
 DdWidgetNode >> isWidgetNode [
 	^ true

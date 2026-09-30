@@ -12,6 +12,30 @@ DdGridNode >> acceptsCellDrops [
 	^ true
 ]
 
+{ #category : 'constraints' }
+DdGridNode >> addMessageFor: aChild values: aDictionary [
+
+	| cell span arguments |
+	cell := aDictionary at: #cell.
+	span := aDictionary at: #span.
+	(cell x < 1 or: [ cell y < 1 ]) ifTrue: [
+		^ self error: 'A grid cell starts at 1@1' ].
+	(span x < 1 or: [ span y < 1 ]) ifTrue: [
+		^ self error: 'A span is at least 1@1' ].
+	arguments := {
+		             aChild addMessage arguments first.
+		             (OCParser parseExpression: cell printString) }.
+	span = (1 @ 1) ifFalse: [
+			arguments := arguments
+			             , { (OCParser parseExpression: span printString) } ].
+	^ OCMessageNode
+		  receiver: (OCVariableNode named: 'layout')
+		  selector: (span = (1 @ 1)
+				   ifTrue: [ #add:atPoint: ]
+				   ifFalse: [ #add:atPoint:span: ])
+		  arguments: arguments
+]
+
 { #category : 'testing' }
 DdGridNode >> canAcceptChild [
 "A grid cell is a position (column@row), not an index among siblings, so the generic
@@ -22,10 +46,43 @@ which builds the right add:atPoint:[span:] message directly, instead."
 	^ false
 ]
 
+{ #category : 'resizing' }
+DdGridNode >> childResizeHandles [
+"All eight: the left/top ones move the cell as well as change the span."
+
+	^ DdResizeHandles allHandleNames
+]
+
 { #category : 'testing' }
 DdGridNode >> childrenAreOrdered [
 
 	^ false
+]
+
+{ #category : 'constraints' }
+DdGridNode >> constraintPropertiesFor: aChild [
+
+	^ {
+		  (DdConstraintProperty
+			   key: #cell
+			   label: 'Cell (column@row)'
+			   kind: #point
+			   default: 1 @ 1).
+		  (DdConstraintProperty
+			   key: #span
+			   label: 'Span (columns@rows)'
+			   kind: #point
+			   default: 1 @ 1) }
+]
+
+{ #category : 'constraints' }
+DdGridNode >> constraintValuesOf: aChild [
+
+	aChild gridPosition ifNil: [ ^ nil ].
+	^ Dictionary new
+		  at: #cell put: aChild gridPosition;
+		  at: #span put: aChild gridSpan;
+		  yourself
 ]
 
 { #category : 'editing' }
@@ -52,6 +109,27 @@ meaningful order among themselves, so this simply appends."
 DdGridNode >> kindLabel [
 
 	^ 'Grid'
+]
+
+{ #category : 'properties' }
+DdGridNode >> layoutProperties [
+
+	^ {
+		  (DdLayoutProperty number: 'Border width' selector: #borderWidth:).
+		  (DdLayoutProperty
+			   number: 'Column spacing'
+			   selector: #columnSpacing:).
+		  (DdLayoutProperty number: 'Row spacing' selector: #rowSpacing:).
+		  (DdLayoutProperty
+			   flag: 'Same width for all columns'
+			   on: #beColumnHomogeneous
+			   off: #beColumnNotHomogeneous
+			   default: true).
+		  (DdLayoutProperty
+			   flag: 'Same height for all rows'
+			   on: #beRowHomogeneous
+			   off: #beRowNotHomogeneous
+			   default: true) }
 ]
 
 { #category : 'printing' }

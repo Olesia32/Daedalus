@@ -38,25 +38,23 @@ case-insensitively."
 
 { #category : 'dragging' }
 DdWidgetPalettePresenter >> containsWorldPoint: aPoint [
-"True when aPoint (world coordinates) is over the list of widgets."
+"True when aPoint (world coordinates) is over the list of widgets. A list on a hidden tab keeps
+its old bounds but has left the world - it must not claim presses meant for the tree."
 
 	^ list adapter ifNil: [ false ] ifNotNil: [ :anAdapter |
-			  anAdapter widget
-				  ifNil: [ false ]
-				  ifNotNil: [ :morph | morph boundsInWorld containsPoint: aPoint ] ]
+			  anAdapter widget ifNil: [ false ] ifNotNil: [ :morph |
+				  morph world notNil and: [
+					  morph boundsInWorld containsPoint: aPoint ] ] ]
 ]
 
 { #category : 'layout' }
 DdWidgetPalettePresenter >> defaultLayout [
+"The tab title names this list now, so there is no header label of its own."
 
-	| tmp1 tmp2 |
-	tmp1 := SpBoxLayout newLeftToRight.
-	tmp2 := SpBoxLayout newTopToBottom.
-	tmp2
-		add: 'Standart Widgetes' expand: false;
-		add: filteredInput expand: false.
-	tmp1 add: (tmp2 add: list).
-	^ tmp1 yourself
+	^ SpBoxLayout newTopToBottom
+		  add: filteredInput expand: false;
+		  add: list;
+		  yourself
 ]
 
 { #category : 'accessing' }

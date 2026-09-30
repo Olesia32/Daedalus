@@ -8,7 +8,9 @@ Class {
 		'draggedPath',
 		'map',
 		'indicator',
-		'draggedDescriptor'
+		'draggedDescriptor',
+		'resizeHandle',
+		'resizeStartRect'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -27,6 +29,12 @@ DdDragController class >> for: arg1 [
 	^ self new setDesigner: arg1
 ]
 
+{ #category : 'constants' }
+DdDragController class >> minResizeExtent [
+
+	^ 10 @ 10
+]
+
 { #category : 'dragging' }
 DdDragController >> beginDrag [
 	"By now the list has handled the press, so its selection is the row being dragged.
@@ -42,14 +50,55 @@ DdDragController >> beginDrag [
 	indicator openInWorld
 ]
 
+{ #category : 'resizing' }
+DdDragController >> beginResize: aHandleName [
+
+	| rectangle path |
+	rectangle := designer selectedWidgetRectangle.
+	path := designer selectedNodePath.
+	(rectangle isNil or: [ path isNil ]) ifTrue: [ ^ self ].
+	state := #resizing.
+	resizeHandle := aHandleName.
+	resizeStartRect := rectangle.
+	draggedPath := path.
+	indicator := DdDropIndicatorMorph new.
+	indicator color: (Color
+			 r: 0.15
+			 g: 0.5
+			 b: 0.95
+			 alpha: 0.25).
+	indicator openInWorld.
+	indicator showAt: rectangle
+]
+
 { #category : 'dragging' }
 DdDragController >> cancel [
+
 	state := #idle.
 	indicator ifNotNil: [ :morph | morph delete ].
 	indicator := nil.
 	map := nil.
 	draggedPath := nil.
-	draggedDescriptor := nil
+	draggedDescriptor := nil.
+	resizeHandle := nil.
+	resizeStartRect := nil
+]
+
+{ #category : 'resizing' }
+DdDragController >> finishResizeAt: aPoint [
+
+	| path handle from to |
+	path := draggedPath.
+	handle := resizeHandle.
+	from := resizeStartRect.
+	to := self resizedRectangleAt: aPoint.
+	self cancel.
+	from = to ifTrue: [ ^ self ].
+	designer
+		resized: path
+		handle: handle
+		from: from
+		to: to
 ]
 
 { #category : 'events' }
@@ -98,10 +147,18 @@ DdDragController >> isFarEnough: arg1 [
 	^ tmp1 * tmp1 + (tmp2 * tmp2) >= (tmp3 * tmp3)
 ]
 
+{ #category : 'testing' }
+DdDragController >> isResizing [
+
+	^ state == #resizing
+]
+
 { #category : 'dragging' }
 DdDragController >> moveTo: aPoint [
 
 	state == #idle ifTrue: [ ^ self ].
+	state == #resizing ifTrue: [
+		^ indicator showAt: (self resizedRectangleAt: aPoint) ].
 	(#( #pressed #pressedOnPalette ) includes: state) ifTrue: [
 			(self isFarEnough: aPoint) ifFalse: [ ^ self ].
 			self beginDrag.
@@ -111,22 +168,23 @@ DdDragController >> moveTo: aPoint [
 
 { #category : 'dragging' }
 DdDragController >> pressAt: aPoint [
-"Every mouse down starts afresh. A press over the palette list is a candidate palette drag;
-a press on a canvas widget becomes a candidate when pressedOnPath: follows."
 
 	self cancel.
 	pressPoint := aPoint.
 	(designer paletteContainsPoint: aPoint) ifTrue: [
-		state := #pressedOnPalette ]
+		^ state := #pressedOnPalette ].
+	(designer resizeHandleAt: aPoint) ifNotNil: [ :handle |
+		self beginResize: handle ]
 ]
 
 { #category : 'dragging' }
-DdDragController >> pressedOnPath: arg1 [
+DdDragController >> pressedOnPath: aPath [
+"The click that grabbed a handle also reaches the canvas, which reports the widget under it:
+that must not turn the resize into an ordinary drag."
 
-	pressPoint
-		ifNil: [ pressPoint := World primaryHand position ]
-		ifNotNil: [ pressPoint ].
-	draggedPath := arg1.
+	state == #resizing ifTrue: [ ^ self ].
+	pressPoint ifNil: [ pressPoint := World primaryHand position ].
+	draggedPath := aPath.
 	state := #pressed
 ]
 
@@ -144,7 +202,9 @@ DdDragController >> processEvent: arg1 [
 
 { #category : 'dragging' }
 DdDragController >> release: aPoint [
+
 	| target path descriptor |
+	state == #resizing ifTrue: [ ^ self finishResizeAt: aPoint ].
 	state == #dragging ifFalse: [ ^ self cancel ].
 	target := map dropTargetAt: aPoint dragging: draggedPath.
 	path := draggedPath.
@@ -154,6 +214,16 @@ DdDragController >> release: aPoint [
 	descriptor
 		ifNil: [ designer dragDropped: path on: target ]
 		ifNotNil: [ designer paletteDropped: descriptor on: target ]
+]
+
+{ #category : 'resizing' }
+DdDragController >> resizedRectangleAt: aPoint [
+
+	^ DdResizeHandles
+		  resized: resizeStartRect
+		  handle: resizeHandle
+		  by: aPoint - pressPoint
+		  minExtent: self class minResizeExtent
 ]
 
 { #category : 'initialization' }

@@ -12,6 +12,27 @@ DdAbsoluteNode >> acceptsPointDrops [
 	^ true
 ]
 
+{ #category : 'constraints' }
+DdAbsoluteNode >> addMessageFor: aChild values: aDictionary [
+
+	| position extent arguments |
+	position := aDictionary at: #position.
+	extent := aDictionary at: #extent.
+	arguments := {
+		             aChild addMessage arguments first.
+		             (OCParser parseExpression: position printString) }.
+	extent ifNotNil: [
+			arguments := arguments
+			             , { (OCParser parseExpression: extent printString) } ].
+	^ OCMessageNode
+		  receiver: (OCVariableNode named: 'layout')
+		  selector:
+		  (extent
+			   ifNil: [ #add:atPoint: ]
+			   ifNotNil: [ #add:atPoint:extent: ])
+		  arguments: arguments
+]
+
 { #category : 'testing' }
 DdAbsoluteNode >> canAcceptChild [
 "An absolute child's position (and optional extent) is carried entirely in its own add-message
@@ -22,12 +43,57 @@ DdLayoutEditor>>insertAbsoluteWidget:into:atPoint:extent: instead, once that sli
 	^ false
 ]
 
+{ #category : 'resizing' }
+DdAbsoluteNode >> childResizeHandles [
+"All eight: the left/top ones move the position (atPoint:) as well as change the extent."
+
+	^ DdResizeHandles allHandleNames
+]
+
 { #category : 'testing' }
 DdAbsoluteNode >> childrenAreOrdered [
 "The drawing order still matters (last added is on top), but position among siblings carries no
 layout meaning the way it does in a box - same reasoning as a grid cell."
 
 	^ false
+]
+
+{ #category : 'constraints' }
+DdAbsoluteNode >> constraintPropertiesFor: aChild [
+
+	^ {
+		  (DdConstraintProperty
+			   key: #position
+			   label: 'Position (x@y)'
+			   kind: #point
+			   default: 0 @ 0).
+		  (DdConstraintProperty
+			   key: #extent
+			   label: 'Size (width@height)'
+			   kind: #point
+			   default: nil) }
+]
+
+{ #category : 'constraints' }
+DdAbsoluteNode >> constraintValuesOf: aChild [
+
+	| message values point |
+	message := aChild addMessage.
+	values := Dictionary new.
+	values
+		at: #position put: 0 @ 0;
+		at: #extent put: nil.
+	message selector = #add: ifTrue: [ ^ values ].
+	(#( #add:atPoint: #add:atPoint:extent: ) includes: message selector)
+		ifFalse: [ ^ nil ].
+	point := DdLayoutNode pointFromNode: message arguments second.
+	point ifNil: [ ^ nil ].
+	values at: #position put: point rounded.
+	message selector = #add:atPoint:extent: ifTrue: [
+			point := DdLayoutNode pointFromNode: message arguments third.
+			point ifNil: [ ^ nil ].
+			values at: #extent put: point rounded ].
+	^ values
 ]
 
 { #category : 'editing' }
@@ -63,6 +129,12 @@ real configuration and should not be shown as one."
 DdAbsoluteNode >> kindLabel [
 
 	^ 'Absolute'
+]
+
+{ #category : 'properties' }
+DdAbsoluteNode >> layoutProperties [
+
+	^ #(  )
 ]
 
 { #category : 'printing' }

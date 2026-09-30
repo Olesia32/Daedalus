@@ -27,16 +27,12 @@ DdTestPresenter >> defaultLayout [
 
 	^ SpBoxLayout new
 		  spacing: 10;
-		  add: (SpBoxLayout newTopToBottom
-				   spacing: 4;
-				   yourself)
-		  expand: false;
-		  add: titleLabel;
-		  add: agreeCheckBox expand: false;
+		  add: titleLabel height: 26;
+		  add: agreeCheckBox height: 35;
+		  add: listPresenter height: 65;
+		  add: genderGroup height: 53;
 		  add: nameInputPresenter expand: false;
-		  add: genderGroup expand: false;
-		  add: hobbyGroup expand: false;
-		  add: listPresenter expand: true;
+		  add: hobbyGroup height: 49;
 		  add: submitButton expand: false;
 		  yourself
 ]
@@ -86,7 +82,7 @@ DdTestPresenter >> initializePresenters [
 	listPresenter := ListPresenter new.
 	listPresenter items: #( '1' '2' '3' '5' '6' '7' '4' ).
 	hobbyGroup := CheckboxGroupPresenter new.
-	hobbyGroup selectedIndexes: #( 2 ).
+	hobbyGroup selectedIndexes: #( 1 2 ).
 	hobbyGroup items: #( 'Cooking' 'Traveling' 'Programming'
 	   'Running' ).
 	hobbyGroup showFrame: false.

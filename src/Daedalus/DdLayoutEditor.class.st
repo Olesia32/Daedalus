@@ -20,7 +20,9 @@ DdLayoutEditor class >> containerKinds [
 		  (#verticalPaned -> 'Vertical paned').
 		  (#horizontalPaned -> 'Horizontal paned').
 		  (#grid -> 'Grid').
-		  (#absolute -> 'Absolute layout') }
+		  (#absolute -> 'Absolute layout').
+		  (#scroll -> 'Scroll').
+		  (#overlay -> 'Overlay') }
 ]
 
 { #category : 'instance creation' }
@@ -28,6 +30,16 @@ DdLayoutEditor class >> forClass: aClass [
 	(aClass includesSelector: #defaultLayout) ifFalse: [
 		^ self error: aClass name , ' has no defaultLayout of its own' ].
 	^ self on: (aClass >> #defaultLayout) sourceCode
+]
+
+{ #category : 'containers' }
+DdLayoutEditor class >> labelForKind: aKind [
+
+	^ (self containerKinds
+		   detect: [ :each | each key = aKind ]
+		   ifNone: [ nil ])
+		  ifNil: [ aKind asString ]
+		  ifNotNil: [ :association | association value ]
 ]
 
 { #category : 'paths' }
@@ -62,6 +74,8 @@ removed: it shifts by one when the removed node sat earlier in the child list of
 
 { #category : 'containers' }
 DdLayoutEditor class >> sourceForContainerKind: aKind [
+"An empty scroll/overlay has no property message of its own to keep the cascade at two
+messages, so it is 'yourself; yourself' - the same shape removeChild: leaves behind."
 
 	aKind = #verticalBox ifTrue: [
 		^ 'SpBoxLayout newTopToBottom spacing: 4; yourself' ].
@@ -75,15 +89,32 @@ DdLayoutEditor class >> sourceForContainerKind: aKind [
 		^ 'SpGridLayout new columnSpacing: 4; rowSpacing: 4; yourself' ].
 	aKind = #absolute ifTrue: [
 		^ 'DdAbsoluteLayout new removeAll; yourself' ].
+	aKind = #scroll ifTrue: [
+		^ 'SpScrollableLayout new yourself; yourself' ].
+	aKind = #overlay ifTrue: [
+		^ 'SpOverlayLayout new yourself; yourself' ].
 	^ self error: 'Unknown container kind: ' , aKind printString
 ]
 
 { #category : 'containers' }
+DdLayoutEditor class >> wrapOnlyKinds [
+"Container kinds that only make sense around existing content: a scroll shows exactly one
+child, an overlay puts things on top of a main child. They are created with Wrap, never empty
+with Add."
+
+	^ #( #scroll #overlay )
+]
+
+{ #category : 'containers' }
 DdLayoutEditor >> addContainer: aKind near: aPath [
-	"Adds a new empty container inside the node at aPath when that is a container, otherwise
-	right after that node. Answers the path of the new container."
+"Adds a new empty container inside the node at aPath when that is a container, otherwise
+right after that node. Answers the path of the new container. Wrap-only kinds are refused."
 
 	| node newIndex parentPath |
+	(self class wrapOnlyKinds includes: aKind) ifTrue: [
+			^ self error: (self class labelForKind: aKind)
+				  ,
+				  ' goes around existing content: select a widget or container and press Wrap' ].
 	node := self nodeAt: aPath.
 	(node isKindOf: DdBoxNode) ifTrue: [
 			newIndex := node children size + 1.
@@ -118,6 +149,15 @@ DdLayoutEditor >> boxAt: aPath [
 	(node isKindOf: DdBoxNode) ifFalse: [
 		^ self error: 'Not a box container' ].
 	^ node
+]
+
+{ #category : 'constraints' }
+DdLayoutEditor >> constraintValuesAt: aPath [
+
+	| node |
+	node := self nodeAt: aPath.
+	node parent ifNil: [ ^ nil ].
+	^ node parent constraintValuesOf: node
 ]
 
 { #category : 'grid' }
@@ -260,7 +300,7 @@ DdLayoutEditor >> insertWidget: aVarName into: aPath at: anIndex [
 { #category : 'absolute' }
 DdLayoutEditor >> moveAt: aSourcePath toAbsoluteAt: aPath point: aPoint [
 
-	| node container first |
+	| node container first extent arguments |
 	node := self nodeAt: aSourcePath.
 	container := self nodeAt: aPath.
 	(container isKindOf: DdAbsoluteNode) ifFalse: [
@@ -269,13 +309,27 @@ DdLayoutEditor >> moveAt: aSourcePath toAbsoluteAt: aPath point: aPoint [
 	(container == node or: [ container isDescendantOf: node ]) ifTrue: [
 		^ self error: 'Cannot move a node into itself' ].
 	first := node addMessage arguments first.
+	extent := node addMessage selector = #add:atPoint:extent:
+		          ifTrue: [ node addMessage arguments third copy ]
+		          ifFalse: [ nil ].
 	node parent removeChild: node.
+	arguments := extent
+		             ifNil: [
+				             {
+					             first.
+					             (OCParser parseExpression: aPoint printString) } ]
+		             ifNotNil: [
+				             {
+					             first.
+					             (OCParser parseExpression: aPoint printString).
+					             extent } ].
 	node addMessage: (OCMessageNode
 			 receiver: (OCVariableNode named: 'layout')
-			 selector: #add:atPoint:
-			 arguments: {
-					 first.
-					 (OCParser parseExpression: aPoint printString) }).
+			 selector:
+			 (extent
+				  ifNil: [ #add:atPoint: ]
+				  ifNotNil: [ #add:atPoint:extent: ])
+			 arguments: arguments).
 	container insertChildDirectly: node.
 	self reparse
 ]
@@ -374,6 +428,20 @@ DdLayoutEditor >> removeAt: aPath [
 	self reparse
 ]
 
+{ #category : 'properties' }
+DdLayoutEditor >> removeMessage: aMessage fromCascade: aCascade [
+"A cascade must never drop below two messages - Pharo prints a one-message cascade without
+the semicolon, and it would no longer parse as a layout (see DdBoxNode>>removeChild:)."
+
+	aCascade messages size <= 2 ifTrue: [
+			aCascade messages add: (OCMessageNode
+					 receiver: aCascade receiver copy
+					 selector: #yourself
+					 arguments: #(  )) ].
+	aCascade messages removeAt:
+		(aCascade messages identityIndexOf: aMessage)
+]
+
 { #category : 'private' }
 DdLayoutEditor >> reparse [
 "The model is a snapshot: after every edit it is rebuilt from the formatted source."
@@ -401,6 +469,135 @@ DdLayoutEditor >> sameGridPosition: aFormattedText as: aPoint [
 		  do: [ :error | false ]
 ]
 
+{ #category : 'properties' }
+DdLayoutEditor >> set: aProperty to: aValue at: aPath [
+"Writes aValue for aProperty of the container at aPath, replacing what was there. The message
+keeps the place of the one it replaces; a new one goes first, before the children."
+
+	| node cascade index message |
+	node := self nodeAt: aPath.
+	node isContainerNode ifFalse: [ ^ self error: 'Not a container' ].
+	(node layoutProperties anySatisfy: [ :each |
+		 each selector = aProperty selector ]) ifFalse: [
+		^ self error: node kindLabel , ' has no property ' , aProperty label ].
+	aProperty validate: aValue.
+	cascade := node cascade.
+	index := cascade messages findFirst: [ :each |
+		         aProperty selectors includes: each selector ].
+	(cascade messages select: [ :each |
+		 aProperty selectors includes: each selector ]) do: [ :each |
+		self removeMessage: each fromCascade: cascade ].
+	message := aProperty
+		           messageFor: aValue
+		           receiver: cascade receiver copy.
+	message ifNotNil: [
+			message parent: cascade.
+			index = 0 ifTrue: [ index := 1 ].
+			cascade messages
+				add: message
+				beforeIndex: (index min: cascade messages size + 1) ].
+	self reparse
+]
+
+{ #category : 'absolute' }
+DdLayoutEditor >> setAbsoluteBoundsAt: aPath position: aPositionPoint extent: anExtentPoint [
+"Rewrites the add-message of the absolute child at aPath as add:atPoint:extent:, whatever form
+it had before (plain add:, add:atPoint:, add:bounds:)."
+
+	| node |
+	node := self nodeAt: aPath.
+	(node parent isKindOf: DdAbsoluteNode) ifFalse: [
+		^ self error: 'Not inside an absolute layout' ].
+	node replaceAddMessageWith: (OCMessageNode
+			 receiver: (OCVariableNode named: 'layout')
+			 selector: #add:atPoint:extent:
+			 arguments: {
+					 node addMessage arguments first.
+					 (OCParser parseExpression: aPositionPoint printString).
+					 (OCParser parseExpression: anExtentPoint printString) }).
+	self reparse
+]
+
+{ #category : 'editing' }
+DdLayoutEditor >> setBoxSizeAt: aPath size: anInteger [
+
+	| node box |
+	node := self nodeAt: aPath.
+	box := node parent.
+	(box notNil and: [ box class == DdBoxNode ]) ifFalse: [
+		^ self error: 'Not inside a box layout' ].
+	node replaceAddMessageWith: (OCMessageNode
+			 receiver: (OCVariableNode named: 'layout')
+			 selector: (box isHorizontal
+					  ifTrue: [ #add:width: ]
+					  ifFalse: [ #add:height: ])
+			 arguments: {
+					 node addMessage arguments first.
+					 (OCParser parseExpression: anInteger printString) }).
+	self reparse
+]
+
+{ #category : 'constraints' }
+DdLayoutEditor >> setConstraints: aDictionary at: aPath [
+"Rewrites the add-message of the node at aPath from aDictionary (key -> value; a missing key
+takes its default). Every value is checked before anything changes."
+
+	| node container properties values |
+	node := self nodeAt: aPath.
+	container := node parent.
+	container ifNil: [
+		^ self error: 'The root layout is not inside a container' ].
+	properties := container constraintPropertiesFor: node.
+	properties isEmpty ifTrue: [
+			^ self error:
+				  'A child of ' , container kindLabel
+				  , ' has no constraints to set' ].
+	values := Dictionary new.
+	properties do: [ :property |
+			| value |
+			value := aDictionary
+				         at: property key
+				         ifAbsent: [ property default ].
+			property validate: value.
+			values at: property key put: value ].
+	(container isKindOf: DdGridNode) ifTrue: [
+			| cell span |
+			cell := values at: #cell.
+			span := values at: #span.
+			cell x to: cell x + span x - 1 do: [ :column |
+					cell y to: cell y + span y - 1 do: [ :row |
+							(self gridOccupantIn: container at: column @ row ignoring: node)
+								ifNotNil: [
+								^ self error: 'That area is taken by another widget' ] ] ] ].
+	node replaceAddMessageWith:
+		(container addMessageFor: node values: values).
+	self reparse
+]
+
+{ #category : 'grid' }
+DdLayoutEditor >> setGridCellAt: aPath position: aCell span: aSpan [
+"Gives the grid child at aPath a new cell and span. Refused when the new area overlaps
+another widget of the same grid."
+
+	| node grid |
+	node := self nodeAt: aPath.
+	grid := node parent.
+	(grid isKindOf: DdGridNode) ifFalse: [
+		^ self error: 'Not inside a grid' ].
+	(aCell x < 1 or: [ aCell y < 1 ]) ifTrue: [
+		^ self error: 'A grid cell starts at 1@1' ].
+	aCell x to: aCell x + aSpan x - 1 do: [ :column |
+			aCell y to: aCell y + aSpan y - 1 do: [ :row |
+					(self gridOccupantIn: grid at: column @ row ignoring: node)
+						ifNotNil: [
+						^ self error: 'That area is taken by another widget' ] ] ].
+	node replaceAddMessageWith: (self
+			 gridAddMessageFor: node addMessage arguments first
+			 cell: aCell
+			 span: aSpan).
+	self reparse
+]
+
 { #category : 'grid' }
 DdLayoutEditor >> setGridPositionOf: aNode to: aCell [
 "Rewrites just aNode's cell, keeping its own span (if any)."
@@ -413,6 +610,29 @@ DdLayoutEditor >> setGridPositionOf: aNode to: aCell [
 			 gridAddMessageFor: aNode addMessage arguments first
 			 cell: aCell
 			 span: span)
+]
+
+{ #category : 'editing' }
+DdLayoutEditor >> setPanedSliderAt: aPath position: aFraction [
+"Sets positionOfSlider: of the paned layout at aPath, replacing the one it already has."
+
+	| paned cascade message index |
+	paned := self nodeAt: aPath.
+	(paned isKindOf: DdPanedNode) ifFalse: [
+		^ self error: 'Not a paned layout' ].
+	cascade := paned cascade.
+	message := OCMessageNode
+		           receiver: cascade receiver copy
+		           selector: #positionOfSlider:
+		           arguments:
+		           { (OCParser parseExpression: aFraction printString) }.
+	message parent: cascade.
+	index := cascade messages findFirst: [ :each |
+		         each selector = #positionOfSlider: ].
+	index = 0
+		ifTrue: [ cascade messages addFirst: message ]
+		ifFalse: [ cascade messages at: index put: message ].
+	self reparse
 ]
 
 { #category : 'initialization' }
@@ -467,6 +687,27 @@ DdLayoutEditor >> unknownVariablesIn: aClass [
 	known := aClass allInstVarNames collect: [ :each | each asString ].
 	^ (root ifNil: [ #(  ) ] ifNotNil: [ :r | r widgetNames ]) reject: [
 		  :each | known includes: each asString ]
+]
+
+{ #category : 'properties' }
+DdLayoutEditor >> valueOf: aProperty at: aPath [
+	"The current value of aProperty for the container at aPath: a Boolean for a flag (its default
+when neither selector is in the code), otherwise the number written in the code, or nil."
+
+	| messages found |
+	messages := (self nodeAt: aPath) cascade messages.
+	aProperty isFlag ifTrue: [
+			(messages anySatisfy: [ :each | each selector = aProperty selector ])
+				ifTrue: [ ^ true ].
+			(messages anySatisfy: [ :each |
+				 each selector = aProperty offSelector ]) ifTrue: [ ^ false ].
+			^ aProperty default ].
+	found := messages
+		         detect: [ :each | each selector = aProperty selector ]
+		         ifNone: [ ^ nil ].
+	"Only a literal can be edited in a field; an expression (a variable, a computation) reads as nil."
+	^ found arguments first isLiteralNode ifTrue: [
+		  found arguments first value ]
 ]
 
 { #category : 'containers' }
