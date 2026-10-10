@@ -212,6 +212,27 @@ DdCanvasPresenter >> formExtent: aPoint [
 ]
 
 { #category : 'as yet unclassified' }
+DdCanvasPresenter >> heldPresenterAt: aPoint [
+	"Among the presenters held in the root preview's instance variables, the one whose morph
+	is the smallest containing aPoint, or nil."
+
+	| best bestArea |
+	best := nil.
+	1 to: rootPreviewPresenter class instSize do: [ :i |
+		| held morph bounds |
+		held := rootPreviewPresenter instVarAt: i.
+		held == rootPreviewPresenter ifFalse: [
+			morph := self morphOfHeld: held.
+			(morph notNil and: [ morph world notNil ]) ifTrue: [
+				bounds := morph boundsInWorld.
+				((bounds containsPoint: aPoint) and: [
+					 bestArea isNil or: [ bounds area < bestArea ] ]) ifTrue: [
+					best := held.
+					bestArea := bounds area ] ] ] ].
+	^ best
+]
+
+{ #category : 'as yet unclassified' }
 DdCanvasPresenter >> instVarNameForPresenterInRoot: aPresenter [
 "Returns the instance variable name under which aPresenter is stored in rootPreviewPresenter, or nil if not found."
 
@@ -242,6 +263,25 @@ DdCanvasPresenter >> installClickHooks [
 					w := p adapter widget.
 					(w respondsTo: #on:send:to:) ifTrue: [
 						w on: #mouseDown send: #ddOnMouseDown: to: self ] ] ]
+]
+
+{ #category : 'as yet unclassified' }
+DdCanvasPresenter >> morphOfHeld: anObject [
+	"The morph shown for an object held in a root variable: the widget of the outermost presenter
+	in its chain of mainPresenters (decorator, library component, inner Spec presenter) that has one."
+
+	| current seen |
+	(anObject isKindOf: SpPresenter) ifFalse: [ ^ nil ].
+	current := anObject.
+	seen := IdentitySet new.
+	[ current notNil and: [ (seen includes: current) not ] ] whileTrue: [
+		seen add: current.
+		((current respondsTo: #adapter) and: [ current adapter notNil ])
+			ifTrue: [ current adapter widget ifNotNil: [ :morph | ^ morph ] ].
+		current := (current respondsTo: #mainPresenter)
+			           ifTrue: [ current mainPresenter ]
+			           ifFalse: [ nil ] ].
+	^ nil
 ]
 
 { #category : 'as yet unclassified' }
@@ -280,16 +320,17 @@ DdCanvasPresenter >> reapplyCanvasColors [
 
 { #category : 'as yet unclassified' }
 DdCanvasPresenter >> rebuildPreview [
-"A fresh preview instance, laid on the grid surface at its own size."
+	"A fresh preview instance, laid on the grid surface at its own size."
 
-	| preview |
-	preview := editedPresenter class new.
-	preview build.
-	rootPreviewPresenter := preview.
-	self ensureSurfaceLayout.
-	self surfaceMorph syncPreview.
-	self installClickHooks.
-	self reapplyCanvasColors.
+	self withoutStyleReset: [
+		| preview |
+		preview := editedPresenter class new.
+		preview build.
+		rootPreviewPresenter := preview.
+		self ensureSurfaceLayout.
+		self surfaceMorph syncPreview.
+		self installClickHooks.
+		self reapplyCanvasColors ].
 	designer ifNotNil: [ :aDesigner | aDesigner recordHistory ]
 ]
 
@@ -444,10 +485,8 @@ DdCanvasPresenter >> shieldMouseDown: anEvent [
 					best := each.
 					bestArea := area ] ].
 	selectedPresenter := best.
-	(selectedPresenter owner isKindOf: RadioGroupPresenter) ifTrue: [
-		selectedPresenter := selectedPresenter owner ].
-	(selectedPresenter owner isKindOf: CheckboxGroupPresenter) ifTrue: [
-		selectedPresenter := selectedPresenter owner ].
+		(self heldPresenterAt: point) ifNotNil: [ :held |
+		selectedPresenter := held ].
 	designer ifNotNil: [
 			designer
 				onSelectionChanged;
@@ -501,4 +540,15 @@ DdCanvasPresenter >> updateSelectionOverlay [
 		         anAdapter widget ifNotNil: [ :morph | morph world ] ].
 	self selectionOverlay showIn: world.
 	self updateContainerOutlineOverlay
+]
+
+{ #category : 'as yet unclassified' }
+DdCanvasPresenter >> withoutStyleReset: aBlock [
+	"Runs aBlock with SpNullApplication's reset switched off: it closes every window, the designer
+	included. The switch goes back on only after the current UI cycle, because components finish
+	styling themselves in callbacks deferred to that cycle, and those must not reset either."
+
+	SpNullApplication skipReset: true.
+	^ aBlock ensure: [
+		  UIManager default defer: [ SpNullApplication skipReset: false ] ]
 ]

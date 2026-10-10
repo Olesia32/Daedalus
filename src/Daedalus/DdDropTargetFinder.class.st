@@ -3,7 +3,8 @@ Class {
 	#superclass : 'Object',
 	#instVars : [
 		'root',
-		'rectangleAt'
+		'rectangleAt',
+		'gridGeometryAt'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -19,10 +20,9 @@ only used to draw the drop indicator, never the widget's actual (natural) extent
 ]
 
 { #category : 'instance creation' }
-DdDropTargetFinder class >> root: aRootNode rectangles: aOneArgBlock [
-"aOneArgBlock answers the rectangle (world coordinates) of the node at a given path, or nil."
+DdDropTargetFinder class >> root: arg1 rectangles: arg2 [
 
-	^ self new setRoot: aRootNode rectangles: aOneArgBlock
+	^ self new setRoot: arg1 rectangles: arg2
 ]
 
 { #category : 'finding' }
@@ -44,19 +44,31 @@ DdDropTargetFinder >> canDropInto: aNode dragging: aDraggedNode point: aPoint [
 
 { #category : 'finding' }
 DdDropTargetFinder >> cellTargetIn: aGrid at: aPoint dragging: aDragged [
+"The cell is taken from the grid's real cells when the canvas can measure them; the old
+estimate from the widgets (DdGridGeometry) is only the fallback."
 
-	| entries found cell occupantEntry occupant swapPath isNoOp |
+	| entries found cell occupantEntry occupant swapPath isNoOp geometry gridRectangle |
 	entries := OrderedCollection new.
 	aGrid children do: [ :child |
-		| position rectangle |
-		position := child gridPosition.
-		rectangle := rectangleAt value: child path.
-		(position notNil and: [ rectangle notNil ]) ifTrue: [
-			entries add: { position. child gridSpan. rectangle. child } ] ].
-	found := DdGridGeometry
-		         cellAt: aPoint
-		         entries: entries
-		         in: (rectangleAt value: aGrid path).
+			| position rectangle |
+			position := child gridPosition.
+			rectangle := rectangleAt value: child path.
+			(position notNil and: [ rectangle notNil ]) ifTrue: [
+					entries add: {
+							position.
+							child gridSpan.
+							rectangle.
+							child } ] ].
+	gridRectangle := rectangleAt value: aGrid path.
+	geometry := gridGeometryAt ifNotNil: [ :block |
+		            block value: aGrid path ].
+	found := geometry
+		         ifNotNil: [ geometry cellAt: aPoint in: gridRectangle ]
+		         ifNil: [
+		         DdGridGeometry
+			         cellAt: aPoint
+			         entries: entries
+			         in: gridRectangle ].
 	cell := found first.
 	occupantEntry := DdGridGeometry
 		                 entryCovering: cell
@@ -84,6 +96,13 @@ DdDropTargetFinder >> cellTargetIn: aGrid at: aPoint dragging: aDragged [
 		  yourself
 ]
 
+{ #category : 'initialization' }
+DdDropTargetFinder >> gridGeometryAt: aOneArgBlock [
+"aOneArgBlock answers the DdGridCellGeometry of the grid at a given path, or nil."
+
+	gridGeometryAt := aOneArgBlock
+]
+
 { #category : 'finding' }
 DdDropTargetFinder >> pointTargetIn: aLayout at: aPoint dragging: aDragged [
 
@@ -102,9 +121,10 @@ DdDropTargetFinder >> pointTargetIn: aLayout at: aPoint dragging: aDragged [
 ]
 
 { #category : 'initialization' }
-DdDropTargetFinder >> setRoot: aRootNode rectangles: aOneArgBlock [
-	root := aRootNode.
-	rectangleAt := aOneArgBlock
+DdDropTargetFinder >> setRoot: arg1 rectangles: arg2 [
+
+	root := arg1.
+	rectangleAt := arg2
 ]
 
 { #category : 'finding' }

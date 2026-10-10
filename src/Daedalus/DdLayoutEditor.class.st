@@ -22,7 +22,8 @@ DdLayoutEditor class >> containerKinds [
 		  (#grid -> 'Grid').
 		  (#absolute -> 'Absolute layout').
 		  (#scroll -> 'Scroll').
-		  (#overlay -> 'Overlay') }
+		  (#overlay -> 'Overlay').
+		  (#frame -> 'Frame') }
 ]
 
 { #category : 'instance creation' }
@@ -74,8 +75,6 @@ removed: it shifts by one when the removed node sat earlier in the child list of
 
 { #category : 'containers' }
 DdLayoutEditor class >> sourceForContainerKind: aKind [
-"An empty scroll/overlay has no property message of its own to keep the cascade at two
-messages, so it is 'yourself; yourself' - the same shape removeChild: leaves behind."
 
 	aKind = #verticalBox ifTrue: [
 		^ 'SpBoxLayout newTopToBottom spacing: 4; yourself' ].
@@ -86,23 +85,24 @@ messages, so it is 'yourself; yourself' - the same shape removeChild: leaves beh
 	aKind = #horizontalPaned ifTrue: [
 		^ 'SpPanedLayout newLeftToRight positionOfSlider: 0.5; yourself' ].
 	aKind = #grid ifTrue: [
-		^ 'SpGridLayout new columnSpacing: 4; rowSpacing: 4; yourself' ].
+		^ 'SpGridLayout new borderWidth: 0; columnSpacing: 4; rowSpacing: 4; yourself' ].
 	aKind = #absolute ifTrue: [
 		^ 'DdAbsoluteLayout new removeAll; yourself' ].
 	aKind = #scroll ifTrue: [
 		^ 'SpScrollableLayout new yourself; yourself' ].
 	aKind = #overlay ifTrue: [
 		^ 'SpOverlayLayout new yourself; yourself' ].
+	aKind = #frame ifTrue: [
+		^ 'SpFrameLayout new label: ''Group''; yourself' ].
 	^ self error: 'Unknown container kind: ' , aKind printString
 ]
 
 { #category : 'containers' }
 DdLayoutEditor class >> wrapOnlyKinds [
-"Container kinds that only make sense around existing content: a scroll shows exactly one
-child, an overlay puts things on top of a main child. They are created with Wrap, never empty
-with Add."
+"Container kinds that only make sense around existing content (one child, or a main child):
+created with Wrap, never empty with Add."
 
-	^ #( #scroll #overlay )
+	^ #( #scroll #overlay #frame )
 ]
 
 { #category : 'containers' }
@@ -183,6 +183,22 @@ DdLayoutEditor >> gridAddMessageFor: anArgumentNode cell: aCell span: aSpanOrNil
 ]
 
 { #category : 'grid' }
+DdLayoutEditor >> gridMessageFor: aNode in: aGrid cell: aCell span: aSpanOrNil [
+"The add-message putting aNode at aCell of aGrid. A node already in aGrid keeps its span (when
+aSpanOrNil is nil) and its alignment."
+
+	| values |
+	values := (aNode parent == aGrid
+		           ifTrue: [ aGrid constraintValuesOf: aNode ]
+		           ifFalse: [ nil ]) ifNil: [ Dictionary new ].
+	values at: #cell put: aCell.
+	values
+		at: #span
+		put: (aSpanOrNil ifNil: [ values at: #span ifAbsent: [ 1 @ 1 ] ]).
+	^ aGrid addMessageFor: aNode values: values
+]
+
+{ #category : 'grid' }
 DdLayoutEditor >> gridOccupantIn: aGrid at: aCell ignoring: aNode [
 "The child of aGrid that covers aCell (spans included), other than aNode, or nil."
 
@@ -197,6 +213,18 @@ DdLayoutEditor >> gridOccupantIn: aGrid at: aCell ignoring: aNode [
 									  and: [
 									  aCell y between: position y and: position y + span y - 1 ] ] ] ]
 		  ifNone: [ nil ]
+]
+
+{ #category : 'properties' }
+DdLayoutEditor >> indexListOf: aProperty in: aCascade [
+"The numbers n of every '<selector> n expand: true' in aCascade, sorted."
+
+	^ ((aCascade messages select: [ :each |
+			    each selector = aProperty selector and: [
+					    each arguments first isLiteralNode and: [
+							    each arguments second isLiteralNode and: [
+								    each arguments second value == true ] ] ] ]) collect: [
+		   :each | each arguments first value ]) asSortedCollection asArray
 ]
 
 { #category : 'absolute' }
@@ -299,8 +327,10 @@ DdLayoutEditor >> insertWidget: aVarName into: aPath at: anIndex [
 
 { #category : 'absolute' }
 DdLayoutEditor >> moveAt: aSourcePath toAbsoluteAt: aPath point: aPoint [
+"Moves the node to aPoint inside the absolute layout at aPath. A node that already had an
+extent in an absolute layout (in any of the forms it can be written in) keeps it."
 
-	| node container first extent arguments |
+	| node container extent message |
 	node := self nodeAt: aSourcePath.
 	container := self nodeAt: aPath.
 	(container isKindOf: DdAbsoluteNode) ifFalse: [
@@ -308,28 +338,17 @@ DdLayoutEditor >> moveAt: aSourcePath toAbsoluteAt: aPath point: aPoint [
 	node parent ifNil: [ ^ self error: 'Cannot move the root' ].
 	(container == node or: [ container isDescendantOf: node ]) ifTrue: [
 		^ self error: 'Cannot move a node into itself' ].
-	first := node addMessage arguments first.
-	extent := node addMessage selector = #add:atPoint:extent:
-		          ifTrue: [ node addMessage arguments third copy ]
+	extent := (node parent isKindOf: DdAbsoluteNode)
+		          ifTrue: [
+				          (node parent constraintValuesOf: node) ifNotNil: [
+					          :values | values at: #extent ] ]
 		          ifFalse: [ nil ].
+	message := container addMessageFor: node values: (Dictionary new
+			            at: #position put: aPoint;
+			            at: #extent put: extent;
+			            yourself).
 	node parent removeChild: node.
-	arguments := extent
-		             ifNil: [
-				             {
-					             first.
-					             (OCParser parseExpression: aPoint printString) } ]
-		             ifNotNil: [
-				             {
-					             first.
-					             (OCParser parseExpression: aPoint printString).
-					             extent } ].
-	node addMessage: (OCMessageNode
-			 receiver: (OCVariableNode named: 'layout')
-			 selector:
-			 (extent
-				  ifNil: [ #add:atPoint: ]
-				  ifNotNil: [ #add:atPoint:extent: ])
-			 arguments: arguments).
+	node addMessage: message.
 	container insertChildDirectly: node.
 	self reparse
 ]
@@ -359,10 +378,10 @@ target's children AFTER the moved node has been taken out of its old place."
 
 { #category : 'grid' }
 DdLayoutEditor >> moveAt: aSourcePath toGridAt: aGridPath cell: aCell [
-	"Moves the node at aSourcePath into the free cell aCell of the grid at aGridPath. A node already
-in that grid keeps its span. A taken cell is refused, not silently replaced."
+"Moves the node at aSourcePath into the free cell aCell of the grid at aGridPath. A node already
+in that grid keeps its span and alignment. A taken cell is refused, not silently replaced."
 
-	| node grid span first |
+	| node grid message |
 	node := self nodeAt: aSourcePath.
 	grid := self nodeAt: aGridPath.
 	(grid isKindOf: DdGridNode) ifFalse: [
@@ -372,11 +391,13 @@ in that grid keeps its span. A taken cell is refused, not silently replaced."
 		^ self error: 'Cannot move a node into itself' ].
 	(self gridOccupantIn: grid at: aCell ignoring: node) ifNotNil: [
 		^ self error: 'That grid cell is already occupied' ].
-	span := node parent == grid ifTrue: [ node gridSpan ].
-	first := node addMessage arguments first.
+	message := self
+		           gridMessageFor: node
+		           in: grid
+		           cell: aCell
+		           span: nil.
 	node parent removeChild: node.
-	node addMessage:
-		(self gridAddMessageFor: first cell: aCell span: span).
+	node addMessage: message.
 	grid insertChildDirectly: node.
 	self reparse
 ]
@@ -404,12 +425,20 @@ DdLayoutEditor >> newContainerNodeOfKind: aKind [
 	| expression detached |
 	expression := OCParser parseExpression:
 		              (self class sourceForContainerKind: aKind).
-	detached := OCMessageNode
-		            receiver: (OCVariableNode named: 'layout')
-		            selector: #add:expand:
-		            arguments: {
-				            expression.
-				            (OCParser parseExpression: 'false') }.
+	detached := (#( #grid #verticalPaned #horizontalPaned ) includes:
+		             aKind)
+		            ifTrue: [
+				            OCMessageNode
+					            receiver: (OCVariableNode named: 'layout')
+					            selector: #add:
+					            arguments: { expression } ]
+		            ifFalse: [
+				            OCMessageNode
+					            receiver: (OCVariableNode named: 'layout')
+					            selector: #add:expand:
+					            arguments: {
+							            expression.
+							            (OCParser parseExpression: 'false') } ].
 	^ DdLayoutParser new parseExpression: expression addMessage: detached
 ]
 
@@ -471,10 +500,8 @@ DdLayoutEditor >> sameGridPosition: aFormattedText as: aPoint [
 
 { #category : 'properties' }
 DdLayoutEditor >> set: aProperty to: aValue at: aPath [
-"Writes aValue for aProperty of the container at aPath, replacing what was there. The message
-keeps the place of the one it replaces; a new one goes first, before the children."
 
-	| node cascade index message |
+	| node cascade index messages |
 	node := self nodeAt: aPath.
 	node isContainerNode ifFalse: [ ^ self error: 'Not a container' ].
 	(node layoutProperties anySatisfy: [ :each |
@@ -487,15 +514,27 @@ keeps the place of the one it replaces; a new one goes first, before the childre
 	(cascade messages select: [ :each |
 		 aProperty selectors includes: each selector ]) do: [ :each |
 		self removeMessage: each fromCascade: cascade ].
-	message := aProperty
-		           messageFor: aValue
-		           receiver: cascade receiver copy.
-	message ifNotNil: [
+	messages := aProperty isIndexList
+		            ifTrue: [
+				            (aValue ifNil: [ #(  ) ]) asSet asSortedCollection
+					            asArray collect: [ :number |
+						            OCMessageNode
+							            receiver: cascade receiver copy
+							            selector: aProperty selector
+							            arguments: {
+									            (OCParser parseExpression: number printString).
+									            (OCParser parseExpression: 'true') } ] ]
+		            ifFalse: [
+				            (aProperty
+					             messageFor: aValue
+					             receiver: cascade receiver copy)
+					            ifNil: [ #(  ) ]
+					            ifNotNil: [ :message | { message } ] ].
+	index = 0 ifTrue: [ index := 1 ].
+	index := index min: cascade messages size + 1.
+	messages reverseDo: [ :message |
 			message parent: cascade.
-			index = 0 ifTrue: [ index := 1 ].
-			cascade messages
-				add: message
-				beforeIndex: (index min: cascade messages size + 1) ].
+			cascade messages add: message beforeIndex: index ].
 	self reparse
 ]
 
@@ -576,8 +615,8 @@ takes its default). Every value is checked before anything changes."
 
 { #category : 'grid' }
 DdLayoutEditor >> setGridCellAt: aPath position: aCell span: aSpan [
-"Gives the grid child at aPath a new cell and span. Refused when the new area overlaps
-another widget of the same grid."
+"Gives the grid child at aPath a new cell and span, keeping its alignment. Refused when the new
+area overlaps another widget of the same grid."
 
 	| node grid |
 	node := self nodeAt: aPath.
@@ -592,7 +631,8 @@ another widget of the same grid."
 						ifNotNil: [
 						^ self error: 'That area is taken by another widget' ] ] ].
 	node replaceAddMessageWith: (self
-			 gridAddMessageFor: node addMessage arguments first
+			 gridMessageFor: node
+			 in: grid
 			 cell: aCell
 			 span: aSpan).
 	self reparse
@@ -600,16 +640,26 @@ another widget of the same grid."
 
 { #category : 'grid' }
 DdLayoutEditor >> setGridPositionOf: aNode to: aCell [
-"Rewrites just aNode's cell, keeping its own span (if any)."
+"Rewrites just aNode's cell, keeping its own span and alignment."
 
-	| span |
-	span := aNode gridSpan = (1 @ 1)
-		        ifTrue: [ nil ]
-		        ifFalse: [ aNode gridSpan ].
 	aNode replaceAddMessageWith: (self
-			 gridAddMessageFor: aNode addMessage arguments first
+			 gridMessageFor: aNode
+			 in: aNode parent
 			 cell: aCell
-			 span: span)
+			 span: nil)
+]
+
+{ #category : 'grid' }
+DdLayoutEditor >> setGridRowsHomogeneousAt: aPath [
+"Turns on 'Same height for all rows' for the grid at aPath."
+
+	| grid property |
+	grid := self nodeAt: aPath.
+	(grid isKindOf: DdGridNode) ifFalse: [
+		^ self error: 'Not a grid container' ].
+	property := grid layoutProperties detect: [ :each |
+		            each selector = #beRowHomogeneous ].
+	self set: property to: true at: aPath
 ]
 
 { #category : 'editing' }
@@ -691,11 +741,19 @@ DdLayoutEditor >> unknownVariablesIn: aClass [
 
 { #category : 'properties' }
 DdLayoutEditor >> valueOf: aProperty at: aPath [
-	"The current value of aProperty for the container at aPath: a Boolean for a flag (its default
-when neither selector is in the code), otherwise the number written in the code, or nil."
 
-	| messages found |
-	messages := (self nodeAt: aPath) cascade messages.
+	| node messages found |
+	node := self nodeAt: aPath.
+	messages := node cascade messages.
+	aProperty isIndexList ifTrue: [
+		^ self indexListOf: aProperty in: node cascade ].
+	aProperty isAlign ifTrue: [
+			found := messages
+				         detect: [ :each |
+				         aProperty selectors includes: each selector ]
+				         ifNone: [ ^ #none ].
+			^ (found selector asString allButFirst: aProperty selector size)
+				  asLowercase asSymbol ].
 	aProperty isFlag ifTrue: [
 			(messages anySatisfy: [ :each | each selector = aProperty selector ])
 				ifTrue: [ ^ true ].
@@ -704,10 +762,11 @@ when neither selector is in the code), otherwise the number written in the code,
 			^ aProperty default ].
 	found := messages
 		         detect: [ :each | each selector = aProperty selector ]
-		         ifNone: [ ^ nil ].
+		         ifNone: [ ^ node factoryValueFor: aProperty ].
 	"Only a literal can be edited in a field; an expression (a variable, a computation) reads as nil."
-	^ found arguments first isLiteralNode ifTrue: [
-		  found arguments first value ]
+	^ found arguments first isLiteralNode
+		  ifTrue: [ found arguments first value ]
+		  ifFalse: [ nil ]
 ]
 
 { #category : 'containers' }

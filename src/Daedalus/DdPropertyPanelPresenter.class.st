@@ -37,8 +37,9 @@ Class {
 
 { #category : 'layout' }
 DdPropertyPanelPresenter >> applyChanges [
-"Renames the variable if the name input changed, collects all edited properties via the descriptor, generates patched source
+	"Renames the variable if the name input changed, collects all edited properties via the descriptor, generates patched source
 via DdInitializeCodeBuilder, compiles it, applies properties to the live presenter, and triggers a canvas refresh for complex components."
+
 	| propsList builder source varName newVarName needsRefresh |
 	descriptor ifNil: [ ^ self ].
 	varName := self varNameForSubPresenter.
@@ -57,12 +58,14 @@ via DdInitializeCodeBuilder, compiles it, applies properties to the live present
 		           presenterClass: editedClass
 		           properties: propsList.
 	source := builder generate.
-	needsRefresh := (descriptor isKindOf: DdGroupPropertyDescriptor)
-		or: [ descriptor isKindOf: DdComboboxPropertyDescriptor ].
+	needsRefresh := (descriptor isKindOf: DdGroupPropertyDescriptor) or: [
+		                descriptor isKindOf: DdComboboxPropertyDescriptor ].
 	(editedClass compile: source)
 		ifNil: [ self inform: 'Compilation error' ]
 		ifNotNil: [
-				propsList do: [ :props | props applyTo: subPresenter ].
+								SpNullApplication skipReset: true.
+				[ propsList do: [ :props | props applyTo: subPresenter ] ]
+					ensure: [ SpNullApplication skipReset: false ].
 				needsRefresh ifTrue: [ canvas refreshPreview ] ]
 ]
 
@@ -125,26 +128,33 @@ DdPropertyPanelPresenter >> layoutPage [
 
 { #category : 'testing' }
 DdPropertyPanelPresenter >> rebuildDescriptorPanel [
-	"Resolves the descriptor for subPresenter, rebuilds the notebook tabs with fresh Properties and Style panels, and updates the layout."
+	"Resolves the descriptor for subPresenter and rebuilds the Properties/Style/Layout tabs.
+	The page blocks capture their own descriptor and presenter, so a later selection change
+	cannot pull the ground from under an already built notebook. With no descriptor the old
+	tabs are dropped rather than left pointing at nothing."
 
+	| currentDescriptor currentPresenter |
 	subPresenter ifNil: [ ^ self ].
-	descriptor := DdPropertyDescriptor forPresenter: subPresenter.
-	descriptor ifNil: [ ^ self ].
+	currentPresenter := subPresenter.
+	currentDescriptor := DdPropertyDescriptor forPresenter: currentPresenter.
+	descriptor := currentDescriptor.
+	currentDescriptor ifNil: [
+		descriptorPanel := nil.
+		^ self rebuildLayout ].
 
 	descriptorPanel := SpNotebookPresenter new.
-
 	descriptorPanel
 		addPage: (SpNotebookPage title: 'Properties' provider: [
-						 | inner |
-						 inner := descriptor buildPanelFor: subPresenter.
-						 SpPresenter new
-							 layout: (SpScrollableLayout new
-									  child: inner layout;
-									  yourself);
-							 yourself ]);
+					 | inner |
+					 inner := currentDescriptor buildPanelFor: currentPresenter.
+					 SpPresenter new
+						 layout: (SpScrollableLayout new
+								  child: inner layout;
+								  yourself);
+						 yourself ]);
 		addPage: (SpNotebookPage
 			title: 'Style'
-			provider: [ descriptor buildStylePanelFor: subPresenter ]);
+			provider: [ currentDescriptor buildStylePanelFor: currentPresenter ]);
 		addPage: (SpNotebookPage
 			title: 'Layout'
 			provider: [ self layoutPage ]).

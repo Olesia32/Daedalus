@@ -43,9 +43,14 @@ DdCanvasMap >> dropTargetAt: aPoint dragging: aPathOrNil [
 
 { #category : 'finding' }
 DdCanvasMap >> finder [
-	^ DdDropTargetFinder
-		  root: root
-		  rectangles: [ :path | self boundsAt: path ]
+
+	^ (DdDropTargetFinder
+		   root: root
+		   rectangles: [ :path | self boundsAt: path ])
+		  gridGeometryAt: [ :path |
+				  (self morphAt: path) ifNotNil: [ :morph |
+						  DdGridCellGeometry fromGridMorph: morph ] ];
+		  yourself
 ]
 
 { #category : 'debugging' }

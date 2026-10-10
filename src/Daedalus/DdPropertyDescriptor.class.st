@@ -21,13 +21,32 @@ Class {
 
 { #category : 'as yet unclassified' }
 DdPropertyDescriptor class >> forPresenter: aPresenter [
-"Factory. Inspects the kind of aPresenter (or its mainPresenter) and returns the appropriate concrete DdPropertyDescriptor subclass
-instance, or nil for unrecognised types."
+	"Factory. aPresenter may be wrapped several times over (a PresenterDecorator around a library
+	component that itself has a mainPresenter): the whole chain of mainPresenters is collected,
+	library components are recognised by name at any level of it, plain Spec presenters by kind
+	at the innermost one. Answers nil for unrecognised types."
 
-	| mainP |
-	mainP := (aPresenter respondsTo: #mainPresenter)
-		         ifTrue: [ aPresenter mainPresenter ]
-		         ifFalse: [ aPresenter ].
+	| chain names mainP |
+	chain := OrderedCollection with: aPresenter.
+	[
+	(chain last respondsTo: #mainPresenter) and: [
+		chain last mainPresenter notNil and: [
+			(chain includes: chain last mainPresenter) not ] ] ] whileTrue: [
+		chain add: chain last mainPresenter ].
+	names := chain collect: [ :each | each class name ].
+
+	(names includes: #RadioGroupPresenter) ifTrue: [
+		^ DdRadioGroupPropertyDescriptor new ].
+	(names includes: #CheckboxGroupPresenter) ifTrue: [
+		^ DdCheckboxGroupPropertyDescriptor new ].
+	(names includes: #ComboBoxPresenter) ifTrue: [
+		^ DdComboboxPropertyDescriptor new ].
+	(names includes: #TimePickerPresenter) ifTrue: [
+		^ DdTimePickerPropertyDescriptor new ].
+	(names includes: #PaginatedTablePresenter) ifTrue: [
+		^ DdTablePropertyDescriptor new ].
+
+	mainP := chain last.
 	(mainP isKindOf: SpLabelPresenter) ifTrue: [
 		^ DdLabelPropertyDescriptor new ].
 	(mainP isKindOf: SpButtonPresenter) ifTrue: [
@@ -48,17 +67,6 @@ instance, or nil for unrecognised types."
 		^ DdTextAreaPropertyDescriptor new ].
 	(mainP isKindOf: SpTablePresenter) ifTrue: [
 		^ DdTablePropertyDescriptor new ].
-	aPresenter class name = 'RadioGroupPresenter' ifTrue: [
-		^ DdRadioGroupPropertyDescriptor new ].
-	aPresenter class name = 'CheckboxGroupPresenter' ifTrue: [
-		^ DdCheckboxGroupPropertyDescriptor new ].
-	aPresenter class name = 'ComboBoxPresenter' ifTrue: [
-		^ DdComboboxPropertyDescriptor new ].
-	aPresenter class name = 'TimePickerPresenter' ifTrue: [
-		^ DdTimePickerPropertyDescriptor new ].
-	aPresenter class name = 'PaginatedTablePresenter' ifTrue: [
-		^ DdTablePropertyDescriptor new ].
-
 	^ nil
 ]
 

@@ -76,14 +76,47 @@ DdAbsoluteNode >> constraintPropertiesFor: aChild [
 
 { #category : 'constraints' }
 DdAbsoluteNode >> constraintValuesOf: aChild [
+"Reads add:, add:atPoint:, add:atPoint:extent:, add:bounds: and add:withConstraints: with
+position:/extent:/bounds: in the block."
 
-	| message values point |
+	| message values point rectangle |
 	message := aChild addMessage.
 	values := Dictionary new.
 	values
 		at: #position put: 0 @ 0;
 		at: #extent put: nil.
 	message selector = #add: ifTrue: [ ^ values ].
+	message selector = #add:bounds: ifTrue: [
+			rectangle := DdLayoutNode rectangleFromNode:
+				             message arguments second.
+			rectangle ifNil: [ ^ nil ].
+			^ values
+				  at: #position put: rectangle origin rounded;
+				  at: #extent put: rectangle extent rounded;
+				  yourself ].
+	message selector = #add:withConstraints: ifTrue: [
+			(DdLayoutNode blockMessagesOf: message arguments second)
+				ifNil: [ ^ nil ]
+				ifNotNil: [ :messages |
+						messages do: [ :each |
+								each selector = #position: ifTrue: [
+										point := DdLayoutNode pointFromNode: each arguments first.
+										point ifNil: [ ^ nil ].
+										values at: #position put: point rounded ].
+								each selector = #extent: ifTrue: [
+										point := DdLayoutNode pointFromNode: each arguments first.
+										point ifNil: [ ^ nil ].
+										values at: #extent put: point rounded ].
+								each selector = #bounds: ifTrue: [
+										rectangle := DdLayoutNode rectangleFromNode:
+											             each arguments first.
+										rectangle ifNil: [ ^ nil ].
+										values
+											at: #position put: rectangle origin rounded;
+											at: #extent put: rectangle extent rounded ].
+								(#( #position: #extent: #bounds: ) includes: each selector)
+									ifFalse: [ ^ nil ] ].
+						^ values ] ].
 	(#( #add:atPoint: #add:atPoint:extent: ) includes: message selector)
 		ifFalse: [ ^ nil ].
 	point := DdLayoutNode pointFromNode: message arguments second.

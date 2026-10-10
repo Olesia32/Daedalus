@@ -167,6 +167,18 @@ refreshPreview) because initializePresenters may have changed too."
 	self updateHistoryButtons
 ]
 
+{ #category : 'ai' }
+DdDesignerPresenter >> aiButton [
+"Made anew whenever the toolbar is: it keeps no state of its own."
+
+	^ self newButton
+		  label: 'AI';
+		  help:
+			  'Describe a form in words and let a model build it in this class';
+		  action: [ self openAiForm ];
+		  yourself
+]
+
 { #category : 'resizing' }
 DdDesignerPresenter >> applyResizeAt: aPath with: aOneArgBlock [
 "Runs aOneArgBlock on a fresh editor of the edited class, compiles, and refreshes everything
@@ -207,6 +219,20 @@ DdDesignerPresenter >> codeEditor [
 DdDesignerPresenter >> componentTree [
 
 	^ componentTree
+]
+
+{ #category : 'resizing' }
+DdDesignerPresenter >> confirmEqualRowsFor: rowNumbers [
+
+	| rows |
+	rows := ', ' join: (rowNumbers collect: [ :each | each printString ]).
+	^ UIManager default confirm: (rowNumbers size = 1
+			   ifTrue: [ 'Row ' , rows , ' has no widget of its own' ]
+			   ifFalse: [ 'Rows ' , rows , ' have no widget of their own' ])
+		  ,
+		  ', so the grid gives them no height and the widget will not grow there (it can even disappear).
+		
+		Turn on "Same height for all rows" for this grid?'
 ]
 
 { #category : 'layout properties' }
@@ -269,6 +295,13 @@ so it waits for the next UI cycle."
 													at: aDropTarget index ] ] ] ]
 ]
 
+{ #category : 'ai' }
+DdDesignerPresenter >> editedClass [
+"The class of the live preview: the one this designer edits."
+
+	^ self workArea rootPreviewPresenter class
+]
+
 { #category : 'history' }
 DdDesignerPresenter >> historyToolbar [
 "Two small square icon buttons instead of two wide text buttons."
@@ -277,6 +310,7 @@ DdDesignerPresenter >> historyToolbar [
 		  spacing: 2;
 		  add: self undoButton width: 30;
 		  add: self redoButton width: 30;
+		  add: self aiButton width: 30;
 		  yourself
 ]
 
@@ -448,6 +482,17 @@ its Layout tab. Unsupported nodes change nothing."
 							componentTree selectNodeAtPath: path ] ] ]
 ]
 
+{ #category : 'ai' }
+DdDesignerPresenter >> openAiForm [
+"Looked up by name, so the designer does not depend on the Daedalus-AI package."
+
+	(Smalltalk globals at: #DdAiFormDialog ifAbsent: [ nil ])
+		ifNil: [
+			self inform:
+				'Load the Daedalus-AI package to generate forms with AI' ]
+		ifNotNil: [ :dialogClass | (dialogClass forDesigner: self) open ]
+]
+
 { #category : 'dragging' }
 DdDesignerPresenter >> paletteContainsPoint: aPoint [
 	^ widgetPalette containsWorldPoint: aPoint
@@ -580,43 +625,31 @@ DdDesignerPresenter >> resizeBoxChildAt: aPath in: aBoxNode to: aRectangle [
 
 { #category : 'resizing' }
 DdDesignerPresenter >> resizeGridChild: aNode handle: aHandleName to: aRectangle [
-"Snaps the dragged edge to the grid's columns/rows, measured from the widgets on the canvas
-(the same measurements a drop into the grid uses)."
 
-	| map grid entries result |
-	map := self canvasMap.
-	map ifNil: [
+	| snapper cells cell span grid blocker makeRowsEqual |
+	snapper := self resizeSnapperFor: aNode path.
+	snapper ifNil: [
 			^ componentTree notifyUser:
 				  'The canvas is out of date - press Refresh' ].
-	aNode gridPosition ifNil: [ ^ self ].
+	cells := snapper cellsFor: aRectangle handle: aHandleName.
+	cell := cells first.
+	span := cells second.
+	(cell = aNode gridPosition and: [ span = aNode gridSpan ]) ifTrue: [
+		^ self ].
 	grid := aNode parent.
-	entries := OrderedCollection new.
-	grid children do: [ :child |
-			| position rectangle |
-			position := child gridPosition.
-			rectangle := map boundsAt: child path.
-			(position notNil and: [ rectangle notNil ]) ifTrue: [
-					entries add: {
-							position.
-							child gridSpan.
-							rectangle.
-							child } ] ].
-	result := DdGridResizeGeometry
-		          cellsFor: aRectangle
-		          handle: aHandleName
-		          position: aNode gridPosition
-		          span: aNode gridSpan
-		          columns:
-		          (DdGridGeometry rangesFor: entries horizontal: true)
-		          rows:
-		          (DdGridGeometry rangesFor: entries horizontal: false).
-	(result first = aNode gridPosition and: [
-		 result second = aNode gridSpan ]) ifTrue: [ ^ self ].
+	blocker := grid childBlocking: cell span: span ignoring: aNode.
+	blocker ifNotNil: [
+			^ componentTree notifyUser:
+				  'That area is taken by ' , (self resizeLabelOf: blocker) ].
+	makeRowsEqual := false.
+	(cell y ~= aNode gridPosition y or: [ span y ~= aNode gridSpan y ])
+		ifTrue: [
+				(grid rowsWithoutOwnHeightIn: cell span: span ignoring: aNode)
+					ifNotEmpty: [ :rows |
+					makeRowsEqual := self confirmEqualRowsFor: rows ] ].
 	self applyResizeAt: aNode path with: [ :editor |
-			editor
-				setGridCellAt: aNode path
-				position: result first
-				span: result second ]
+			makeRowsEqual ifTrue: [ editor setGridRowsHomogeneousAt: grid path ].
+			editor setGridCellAt: aNode path position: cell span: span ]
 ]
 
 { #category : 'resizing' }
@@ -629,6 +662,14 @@ DdDesignerPresenter >> resizeHandleAt: aPoint [
 	names := workArea selectedResizeHandles.
 	names isEmpty ifTrue: [ ^ nil ].
 	^ DdResizeHandles handleAt: aPoint for: rectangle names: names
+]
+
+{ #category : 'resizing' }
+DdDesignerPresenter >> resizeLabelOf: aNode [
+
+	^ aNode isWidgetNode
+		  ifTrue: [ aNode varName asString ]
+		  ifFalse: [ 'a ' , aNode kindLabel ]
 ]
 
 { #category : 'resizing' }
@@ -662,6 +703,28 @@ DdDesignerPresenter >> resizePanedChildAt: aPath in: aPanedNode to: aRectangle [
 	fraction := (fraction * 100) rounded / 100.0.
 	self applyResizeAt: aPath with: [ :editor |
 		editor setPanedSliderAt: aPanedNode path position: fraction ]
+]
+
+{ #category : 'resizing' }
+DdDesignerPresenter >> resizeSnapperFor: aPath [
+"Snaps a resize of the grid child at aPath to the grid's real cells, read from the live canvas;
+nil for anything else (it resizes freely) or when the canvas cannot be trusted."
+
+	| node map gridMorph geometry |
+	node := componentTree rootNode ifNotNil: [ :root |
+			        [ root nodeAtPath: aPath ]
+				        on: Error
+				        do: [ nil ] ].
+	node ifNil: [ ^ nil ].
+	(node parent isKindOf: DdGridNode) ifFalse: [ ^ nil ].
+	node gridPosition ifNil: [ ^ nil ].
+	map := self canvasMap.
+	map ifNil: [ ^ nil ].
+	gridMorph := map morphAt: node parent path.
+	gridMorph ifNil: [ ^ nil ].
+	geometry := DdGridCellGeometry fromGridMorph: gridMorph.
+	geometry ifNil: [ ^ nil ].
+	^ DdGridResizeSnapper geometry: geometry node: node
 ]
 
 { #category : 'resizing' }

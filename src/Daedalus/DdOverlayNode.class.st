@@ -8,6 +8,7 @@ Class {
 
 { #category : 'constraints' }
 DdOverlayNode >> addMessageFor: aChild values: aDictionary [
+	"Center is Spec's default, so only start/end are written."
 
 	| argument parts |
 	argument := aChild addMessage arguments first.
@@ -15,7 +16,7 @@ DdOverlayNode >> addMessageFor: aChild values: aDictionary [
 	parts addAll: (#( #hAlign #vAlign ) reject: [ :key |
 				 | value |
 				 value := aDictionary at: key.
-				 value = #none ]).
+				 value = #center ]).
 	parts isEmpty ifTrue: [
 			^ OCMessageNode
 				  receiver: (OCVariableNode named: 'layout')
@@ -38,20 +39,19 @@ DdOverlayNode >> childResizeHandles [
 
 { #category : 'constraints' }
 DdOverlayNode >> constraintPropertiesFor: aChild [
-"Only overlays are aligned; the main child fills the whole layout."
 
 	aChild addSelector = #child: ifTrue: [ ^ #(  ) ].
 	^ {
 		  (DdConstraintProperty
 			   key: #hAlign
 			   label: 'Horizontal align'
-			   choices: #( #none #start #center #end )
-			   default: #none).
+			   choices: #( #start #center #end )
+			   default: #center).
 		  (DdConstraintProperty
 			   key: #vAlign
 			   label: 'Vertical align'
-			   choices: #( #none #start #center #end )
-			   default: #none) }
+			   choices: #( #start #center #end )
+			   default: #center) }
 ]
 
 { #category : 'constraints' }
@@ -60,8 +60,8 @@ DdOverlayNode >> constraintValuesOf: aChild [
 	| values message |
 	values := Dictionary new.
 	values
-		at: #hAlign put: #none;
-		at: #vAlign put: #none.
+		at: #hAlign put: #center;
+		at: #vAlign put: #center.
 	message := aChild addMessage.
 	message selector = #child: ifTrue: [ ^ Dictionary new ].
 	message selector = #addOverlay: ifTrue: [ ^ values ].

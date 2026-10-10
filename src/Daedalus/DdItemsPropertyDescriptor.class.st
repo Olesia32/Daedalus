@@ -24,12 +24,12 @@ Class {
 
 { #category : 'adding' }
 DdItemsPropertyDescriptor >> addItemsFieldsTo: aPanel for: aPresenter [
-"Builds the items list, add/remove buttons and new-item input field, wires their actions, and adds all of them to aPanel."
+	"Builds the items list, add/remove buttons and new-item input field, wires their actions, and adds all of them to aPanel."
 
 	itemsList := SpListPresenter new.
 	itemsList
 		display: self itemDisplayBlock;
-		items: ([ aPresenter items asOrderedCollection ]
+		items: ([ OrderedCollection withAll: aPresenter items ]
 				 on: Error
 				 do: [ OrderedCollection new ]).
 
@@ -43,7 +43,7 @@ DdItemsPropertyDescriptor >> addItemsFieldsTo: aPanel for: aPresenter [
 				| text currentItems |
 				text := addItemInput text.
 				text ifNotEmpty: [
-							currentItems := itemsList items asOrderedCollection.
+							currentItems := OrderedCollection withAll: itemsList items.
 							currentItems add: text.
 							itemsList items: currentItems.
 							addItemInput text: ''.
@@ -55,7 +55,7 @@ DdItemsPropertyDescriptor >> addItemsFieldsTo: aPanel for: aPresenter [
 				| sel currentItems |
 				sel := itemsList selectedItem.
 				sel ifNotNil: [
-							currentItems := itemsList items asOrderedCollection.
+							currentItems := OrderedCollection withAll: itemsList items.
 							currentItems remove: sel ifAbsent: [ ].
 							itemsList items: currentItems.
 							self onItemsChanged: currentItems asArray ] ].

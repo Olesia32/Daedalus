@@ -53,7 +53,8 @@ DdLayoutPropertiesPresenter >> addOwnSectionFor: aNode editor: anEditor to: aBox
 				         newInputFor: property
 				         value: (anEditor valueOf: property at: path).
 			rows add: property -> input.
-			aBox add: (self rowFor: property with: input) expand: false ]
+			aBox add: (self rowFor: property with: input) expand: false ].
+	self coupleExpandingColumns
 ]
 
 { #category : 'initialization' }
@@ -140,19 +141,25 @@ DdLayoutPropertiesPresenter >> constraintValueOf: anInput for: aProperty [
 { #category : 'initialization' }
 DdLayoutPropertiesPresenter >> coupleExpandWithSizeIn: aBox [
 
-	| expandInput sizeRow sizeInput |
-	expandInput := constraintRows
-		               detect: [ :each | each key key = #expand ]
-		               ifNone: [ ^ self ].
+	| expandRow sizeRow fillRow expandInput |
+	expandRow := constraintRows
+		             detect: [ :each | each key key = #expand ]
+		             ifNone: [ ^ self ].
+	expandInput := expandRow value.
+	fillRow := constraintRows
+		           detect: [ :each | each key key = #fill ]
+		           ifNone: [ nil ].
+	fillRow ifNotNil: [
+			fillRow value enabled: expandInput state.
+			expandInput whenChangedDo: [ :checked |
+				fillRow value enabled: checked ] ].
 	sizeRow := constraintRows
 		           detect: [ :each |
 		           #( #width #height ) includes: each key key ]
 		           ifNone: [ ^ self ].
-	expandInput := expandInput value.
-	sizeInput := sizeRow value.
 	expandInput whenChangedDo: [ :checked |
-		checked ifTrue: [ sizeInput text: '' ] ].
-	sizeInput whenTextChangedDo: [ :text |
+		checked ifTrue: [ sizeRow value text: '' ] ].
+	sizeRow value whenTextChangedDo: [ :text |
 		text asString trimBoth isEmpty ifFalse: [ expandInput state: false ] ].
 	aBox
 		add: (self newLabel
@@ -161,6 +168,24 @@ DdLayoutPropertiesPresenter >> coupleExpandWithSizeIn: aBox [
 					 , ' turns Expand off.';
 				 yourself)
 		expand: false
+]
+
+{ #category : 'initialization' }
+DdLayoutPropertiesPresenter >> coupleExpandingColumns [
+"An expanding column does nothing while all columns have the same width: typing column
+numbers unchecks 'Same width for all columns'."
+
+	| columns sameWidth |
+	columns := rows
+		           detect: [ :each | each key selector = #column:expand: ]
+		           ifNone: [ ^ self ].
+	sameWidth := rows
+		             detect: [ :each |
+		             each key selector = #beColumnHomogeneous ]
+		             ifNone: [ ^ self ].
+	columns value whenTextChangedDo: [ :text |
+			text asString trimBoth isEmpty ifFalse: [
+				sameWidth value state: false ] ]
 ]
 
 { #category : 'accessing' }
@@ -192,22 +217,35 @@ DdLayoutPropertiesPresenter >> newConstraintInputFor: aProperty value: aValue [
 ]
 
 { #category : 'initialization' }
-DdLayoutPropertiesPresenter >> newInputFor: arg1 value: arg2 [
+DdLayoutPropertiesPresenter >> newInputFor: aProperty value: aValue [
 
-	| tmp4 |
-	arg1 isFlag ifTrue: [
-			| tmp2 |
-			tmp2 := self newCheckBox.
-			tmp2
-				label: arg1 label;
-				state: arg2 == true.
-			^ tmp2 yourself ].
-	nil.
-	tmp4 := self newTextInput.
-	tmp4
-		text: (arg2 ifNil: [ '' ] ifNotNil: [ arg2 printString ]);
-		placeholder: 'default'.
-	^ tmp4 yourself
+	aProperty isFlag ifTrue: [
+			^ self newCheckBox
+				  label: aProperty label;
+				  state: aValue == true;
+				  yourself ].
+	aProperty isAlign ifTrue: [
+			^ self newDropList
+				  items: aProperty choices;
+				  display: [ :each | each asString ];
+				  selectItem: aValue;
+				  yourself ].
+	aProperty isIndexList ifTrue: [
+			^ self newTextInput
+				  text: (', ' join:
+							   ((aValue ifNil: [ #(  ) ]) collect: [ :each |
+									    each printString ]));
+				  placeholder: 'none, e.g. 2, 3';
+				  yourself ].
+	aProperty isString ifTrue: [
+			^ self newTextInput
+				  text: (aValue ifNil: [ '' ]);
+				  placeholder: 'none';
+				  yourself ].
+	^ self newTextInput
+		  text: (aValue ifNil: [ '' ] ifNotNil: [ aValue printString ]);
+		  placeholder: 'default';
+		  yourself
 ]
 
 { #category : 'accessing' }
@@ -287,20 +325,28 @@ its parent (for anything but the root)."
 ]
 
 { #category : 'private' }
-DdLayoutPropertiesPresenter >> valueOf: arg1 for: arg2 [
+DdLayoutPropertiesPresenter >> valueOf: anInput for: aProperty [
 
-	| tmp1 tmp2 |
-	arg2 isFlag ifTrue: [ ^ arg1 state ].
-	nil.
-	tmp1 := arg1 text asString trimBoth.
-	tmp1 isEmpty ifTrue: [ ^ nil ].
-	nil.
-	tmp2 := Number readFrom: tmp1 ifFail: [ ].
-	tmp2
-		ifNil: [
-		^ self error: arg2 label , ': "' , tmp1 , '" is not a number' ]
-		ifNotNil: [ tmp2 ].
-	^ tmp2
+	| text number |
+	aProperty isFlag ifTrue: [ ^ anInput state ].
+	aProperty isAlign ifTrue: [ ^ anInput selectedItem ].
+	aProperty isString ifTrue: [
+			text := anInput text asString.
+			^ text isEmpty
+				  ifTrue: [ nil ]
+				  ifFalse: [ text ] ].
+	text := anInput text asString trimBoth.
+	aProperty isIndexList ifTrue: [
+			^ ((text substrings: ', ') collect: [ :each |
+					   (Number readFrom: each ifFail: [ nil ]) ifNil: [
+						   ^ self error:
+							     aProperty label , ': "' , each , '" is not a number' ] ])
+				  asArray ].
+	text isEmpty ifTrue: [ ^ nil ].
+	number := Number readFrom: text ifFail: [ nil ].
+	number ifNil: [
+		^ self error: aProperty label , ': "' , text , '" is not a number' ].
+	^ number
 ]
 
 { #category : 'accessing' }

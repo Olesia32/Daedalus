@@ -28,8 +28,11 @@ DdPanedNode >> constraintPropertiesFor: aChild [
 
 { #category : 'labels' }
 DdPanedNode >> kindLabel [
-	factorySelector = #newLeftToRight ifTrue: [ ^ 'Horizontal paned' ].
-	factorySelector = #newTopToBottom ifTrue: [ ^ 'Vertical paned' ].
+
+	(#( #newLeftToRight #newHorizontal ) includes: factorySelector)
+		ifTrue: [ ^ 'Horizontal paned' ].
+	(#( #newTopToBottom #newVertical ) includes: factorySelector)
+		ifTrue: [ ^ 'Vertical paned' ].
 	^ 'Paned'
 ]
 
@@ -37,7 +40,7 @@ DdPanedNode >> kindLabel [
 DdPanedNode >> layoutProperties [
 
 	^ { (DdLayoutProperty
-		   fraction: 'Slider position (0-1)'
+		   sliderPosition: 'Slider position (0.3 or pixels)'
 		   selector: #positionOfSlider:) }
 ]
 
@@ -50,6 +53,39 @@ DdPanedNode >> newAddMessageFor: aNode [
 		  receiver: cascade receiver copy
 		  selector: #add:
 		  arguments: { aNode addMessage arguments first }
+]
+
+{ #category : 'parsing' }
+DdPanedNode >> normalizeCascade [
+
+	| positional firstMessage secondMessage index added |
+	positional := cascade messages select: [ :each |
+			              #( #first: #second: #replaceFirst: #replaceSecond: )
+				              includes: each selector ].
+	positional isEmpty ifTrue: [ ^ self ].
+	firstMessage := positional reversed
+		                detect: [ :each |
+		                #( #first: #replaceFirst: ) includes: each selector ]
+		                ifNone: [ nil ].
+	secondMessage := positional reversed
+		                 detect: [ :each |
+		                 #( #second: #replaceSecond: ) includes:
+			                 each selector ]
+		                 ifNone: [ nil ].
+	index := cascade messages identityIndexOf: positional first.
+	positional do: [ :each |
+		cascade messages removeAt: (cascade messages identityIndexOf: each) ].
+	added := ({
+		          firstMessage.
+		          secondMessage } reject: [ :each | each isNil ]) collect: [
+			         :each |
+			         OCMessageNode
+				         receiver: cascade receiver copy
+				         selector: #add:
+				         arguments: { each arguments first } ].
+	added reverseDo: [ :each |
+			each parent: cascade.
+			cascade messages add: each beforeIndex: index ]
 ]
 
 { #category : 'printing' }

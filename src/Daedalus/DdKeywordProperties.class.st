@@ -32,19 +32,26 @@ DdKeywordProperties >> applyTo: aPresenter [
 
 { #category : 'translating' }
 DdKeywordProperties >> patchSource: anAst [
-	"Finds an existing varName selector: call in anAst and replaces its argument 
-	with value; if none exists, inserts a new statement after the variable's assignment node."
-	| existing newNode initNode |
-	
-	existing := anAst body statements
-		            detect: [ :stmt | stmt isMessage and: [
-						            stmt receiver isVariable and: [
-							            stmt receiver name = varName and: [
-								            stmt selector = selector ] ] ] ]
-		            ifNone: [ nil ].
-	existing ifNotNil: [ existing arguments first replaceWith:
-				(OCLiteralValueNode value: value).
-			^ anAst ].
+	"Finds every varName selector: call in anAst - as a plain statement or inside a cascade on
+	varName - and replaces its argument with value; if none exists, inserts a new statement
+	after the variable's assignment node."
+
+	| matches newNode initNode |
+	matches := OrderedCollection new.
+	anAst body statements do: [ :stmt |
+		(stmt isMessage or: [ stmt isCascade ]) ifTrue: [
+			(stmt isCascade
+				 ifTrue: [ stmt messages ]
+				 ifFalse: [ { stmt } ]) do: [ :msg |
+				(msg receiver isVariable and: [
+					 msg receiver name = varName and: [
+						 msg selector = selector asSymbol ] ]) ifTrue: [
+					matches add: msg ] ] ] ].
+	matches ifNotEmpty: [
+		matches do: [ :msg |
+			msg arguments first replaceWith:
+				(OCParser parseExpression: value printString) ].
+		^ anAst ].
 	initNode := anAst body statements
 		            detect: [ :stmt |
 		            stmt isAssignment and: [ stmt variable name = varName ] ]
@@ -54,7 +61,6 @@ DdKeywordProperties >> patchSource: anAst [
 		           varName , ' ' , selector , ' ' , value printString.
 	anAst body addNode: newNode after: initNode.
 	^ anAst
-	
 ]
 
 { #category : 'accessing' }

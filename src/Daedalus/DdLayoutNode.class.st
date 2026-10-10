@@ -70,6 +70,24 @@ DdLayoutNode class >> pointFromText: aString [
 		  do: [ :error | nil ]
 ]
 
+{ #category : 'parsing' }
+DdLayoutNode class >> rectangleFromNode: anExpression [
+"(10 @ 20 extent: 80 @ 30) or (10 @ 20 corner: 90 @ 50) written in the code -> a Rectangle,
+or nil."
+
+	| origin other |
+	(anExpression notNil and: [
+			 anExpression isMessage and: [
+				 #( #extent: #corner: ) includes: anExpression selector ] ])
+		ifFalse: [ ^ nil ].
+	origin := self pointFromNode: anExpression receiver.
+	other := self pointFromNode: anExpression arguments first.
+	(origin isNil or: [ other isNil ]) ifTrue: [ ^ nil ].
+	^ anExpression selector = #extent:
+		  ifTrue: [ origin extent: other ]
+		  ifFalse: [ origin corner: other ]
+]
+
 { #category : 'testing' }
 DdLayoutNode >> acceptsCellDrops [
 "True for a container that is dropped into by cell (a grid) rather than by index among siblings."
@@ -214,6 +232,13 @@ DdLayoutNode >> displayLabel [
 	^ self treeLabel
 ]
 
+{ #category : 'properties' }
+DdLayoutNode >> factoryValueFor: aProperty [
+"A property given to the factory instead of the cascade (SpFrameLayout newLabel: 'x'), or nil."
+
+	^ nil
+]
+
 { #category : 'searching' }
 DdLayoutNode >> findWidgetNamed: aString [
 	"The widget node whose variable is aString (a String or a Symbol), or nil."
@@ -225,11 +250,27 @@ DdLayoutNode >> findWidgetNamed: aString [
 ]
 
 { #category : 'grid' }
+DdLayoutNode >> gridConstraintFromBlock: aSelector [
+"For a child added with add:withConstraints: [ :c | c position: 2 @ 1; span: 1 @ 2 ]: the point
+given to aSelector in the block, or nil."
+
+	addMessage arguments size = 2 ifFalse: [ ^ nil ].
+	(self class blockMessagesOf: addMessage arguments second) ifNotNil: [
+			:messages |
+			messages do: [ :each |
+					each selector = aSelector ifTrue: [
+						^ self class pointFromNode: each arguments first ] ] ].
+	^ nil
+]
+
+{ #category : 'grid' }
 DdLayoutNode >> gridPosition [
 "The cell (column@row) this node has in a grid, or nil when it is not a grid child."
 
 	| arguments |
 	addMessage ifNil: [ ^ nil ].
+	addMessage selector = #add:withConstraints: ifTrue: [
+		^ self gridConstraintFromBlock: #position: ].
 	arguments := self constraintArguments.
 	arguments isEmpty ifTrue: [ ^ nil ].
 	^ self class pointFromText: arguments first
@@ -240,6 +281,9 @@ DdLayoutNode >> gridSpan [
 "How many columns@rows this node covers in a grid: 1@1 unless it says otherwise."
 
 	| arguments |
+	(addMessage notNil and: [
+		 addMessage selector = #add:withConstraints: ]) ifTrue: [
+		^ (self gridConstraintFromBlock: #span:) ifNil: [ 1 @ 1 ] ].
 	arguments := self constraintArguments.
 	arguments size >= 2 ifFalse: [ ^ 1 @ 1 ].
 	^ (self class pointFromText: arguments second) ifNil: [ 1 @ 1 ]

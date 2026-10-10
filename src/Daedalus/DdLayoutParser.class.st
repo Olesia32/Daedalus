@@ -21,8 +21,11 @@ DdLayoutParser >> containerClassFor: anExpression [
 	name = 'DdAbsoluteLayout' ifTrue: [ ^ DdAbsoluteNode ].
 	name = 'SpScrollableLayout' ifTrue: [ ^ DdScrollNode ].
 	name = 'SpOverlayLayout' ifTrue: [ ^ DdOverlayNode ].
-	name = 'SpPanedLayout' ifTrue: [ "first:/second: put children at fixed positions; editing them as an ordered list would change the meaning"
-			^ (self hasPositionalMessages: anExpression)
+	name = 'SpFrameLayout' ifTrue: [ ^ DdFrameNode ].
+	name = 'SpPanedLayout' ifTrue: [ "first:/second: mixed with add: has no clear order - left unreadable"
+			^ ((self hasPositionalMessages: anExpression) and: [
+					   anExpression messages anySatisfy: [ :each |
+						   each selector beginsWith: 'add:' ] ])
 				  ifTrue: [ nil ]
 				  ifFalse: [ DdPanedNode ] ].
 	^ nil
@@ -80,6 +83,7 @@ scroll and overlay)."
 		             addMessage: aMessage;
 		             factorySelector: aCascade receiver selector;
 		             yourself.
+	container normalizeCascade.
 	aCascade messages do: [ :each |
 			(container isChildMessage: each)
 				ifTrue: [
