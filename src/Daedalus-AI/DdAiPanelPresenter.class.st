@@ -93,8 +93,8 @@ DdAiPanelPresenter >> defaultLayout [
 
 { #category : 'actions' }
 DdAiPanelPresenter >> generate [
-"Changes the current form when there is one; a new form replaces a non-empty one only when
-the user agrees - asked before the request, so a No does not cost one."
+	"Changes the current form when there is one; a new form replaces a non-empty one only when
+	the user agrees - asked before the request, so a No does not cost one."
 
 	| request client current generator |
 	request := requestText text asString trimBoth.
@@ -105,30 +105,33 @@ the user agrees - asked before the request, so a No does not cost one."
 		do: [ :error | ^ self status: error messageText ].
 	current := self currentDescription.
 	current ifNil: [ self mayReplace ifFalse: [ ^ self ] ].
-	generator := DdFormSpecGenerator new client: client.
+	generator := DdFormSpecGenerator new
+		             client: client;
+		             targetClass: designer editedClass;
+		             yourself.
 	self busy: true.
-	self status: 'Asking ' , DdAiSettings summary , ' to '
-		,
-		(current
+	self status: 'Asking ' , DdAiSettings summary , ' to ' , (current
 			 ifNil: [ 'make a new form' ]
 			 ifNotNil: [ 'change the form' ]) , ' ...'.
 	[
-		| description failure |
-		failure := nil.
-		description := [ generator descriptionFor: request current: current ]
-			               on: Error
-			               do: [ :error |
-					               failure := error messageText.
-					               nil ].
-		UIManager default defer: [
-				self busy: false.
-				failure ifNotNil: [ self status: failure ] ifNil: [
-						self
-							apply: description
-							note:
-							'Done in ' , generator attempts printString , ' attempt(s).' ] ] ]
+	| description failure |
+	failure := nil.
+	description := [ generator descriptionFor: request current: current ]
+		               on: Error
+		               do: [ :error |
+			               failure := error messageText.
+			               nil ].
+	UIManager default defer: [
+		self busy: false.
+		failure
+			ifNotNil: [ self status: failure ]
+			ifNil: [
+				self
+					apply: description
+					note: 'Done in ' , generator attempts printString , ' attempt(s).' ] ] ]
 		forkAt: Processor userBackgroundPriority
 		named: 'Daedalus AI request'
+
 ]
 
 { #category : 'initialization' }

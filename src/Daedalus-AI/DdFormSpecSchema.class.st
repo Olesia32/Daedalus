@@ -132,7 +132,7 @@ DdFormSpecSchema class >> legacySelectors [
 	"Selectors found in older code, read as the ones they stand for. The first one is
 	columnCount: written with a Cyrillic first letter."
 
-	^ Dictionary newFrom: { ('сolumnCount:' -> 'columnCount:') }
+	^ Dictionary newFrom: { ('columnCount:' -> 'columnCount:') }
 ]
 
 { #category : 'widgets' }
@@ -188,6 +188,28 @@ DdFormSpecSchema class >> styleProperties [
 	     #( 'borderColor' 'borderColor:' #string ) #( 'borderWidth' 'borderWidth:' #number )
 	     #( 'bold' 'bold' #flag ) #( 'italic' 'italic' #flag ) #( 'width' 'width:' #number )
 	     #( 'height' 'height:' #number ) )
+]
+
+{ #category : 'widgets' }
+DdFormSpecSchema class >> typeOfClassNamed: aName [
+	"The JSON widget type of a presenter class: one of the palette, one named after a Spec
+	presenter (LabelPresenter is SpLabelPresenter, CheckboxPresenter is SpCheckBoxPresenter), or
+	one inheriting from a palette class. other for anything else."
+
+	| known class |
+	aName ifNil: [ ^ 'other' ].
+	known := self widgetClassTypes.
+	(known at: aName asSymbol ifAbsent: [ nil ]) ifNotNil: [ :type | ^ type ].
+	known keysAndValuesDo: [ :className :type |
+		className asString asLowercase = ('sp' , aName asString asLowercase) ifTrue: [
+			^ type ] ].
+	class := Smalltalk globals at: aName asSymbol ifAbsent: [ ^ 'other' ].
+	class isClass ifFalse: [ ^ 'other' ].
+	known keysAndValuesDo: [ :className :type |
+		(Smalltalk globals at: className ifAbsent: [ nil ]) ifNotNil: [ :knownClass |
+			(class inheritsFrom: knownClass) ifTrue: [ ^ type ] ] ].
+	^ 'other'
+
 ]
 
 { #category : 'widgets' }

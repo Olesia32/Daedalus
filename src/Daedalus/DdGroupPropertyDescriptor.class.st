@@ -78,7 +78,7 @@ DdGroupPropertyDescriptor >> collectPropertiesWithVarName: varName [
 
     columnCountInput text ifNotEmpty: [ :v |
         result add: (DdKeywordProperties new
-            varName: varName; selector: 'сolumnCount:'; value: v asInteger; yourself) ].
+            varName: varName; selector: 'columnCount:'; value: v asInteger; yourself) ].
 
     result add: (DdKeywordProperties new
         varName: varName; selector: 'showTitle:'; value: showTitleCheckbox state; yourself).

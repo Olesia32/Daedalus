@@ -9,6 +9,18 @@ Class {
 	#package : 'Daedalus-AI'
 }
 
+{ #category : 'building' }
+DdFormSpecImporter class >> builderFor: aClass [
+	"A builder that knows aClass: the names it uses and the widgets it already has. The import and
+	the generator's check must use the same one, or they disagree about what is allowed."
+
+	^ DdFormSpecLayoutBuilder new
+		  reservedNames: aClass allInstVarNames;
+		  existingWidgets: (self new existingWidgetsOf: aClass);
+		  yourself
+
+]
+
 { #category : 'importing' }
 DdFormSpecImporter class >> importInto: aClass from: aDictionary [
 
@@ -72,9 +84,7 @@ DdFormSpecImporter >> importInto: aClass from: aDictionary [
 
 	| source service |
 	targetClass := aClass.
-	builder := DdFormSpecLayoutBuilder new.
-	builder reservedNames: aClass allInstVarNames.
-	builder existingWidgets: (self existingWidgetsOf: aClass).
+	builder := self class builderFor: aClass.
 	source := builder sourceFor: aDictionary.
 	service := DdAddWidgetService new
 		           presenterClass: aClass;
@@ -90,4 +100,5 @@ DdFormSpecImporter >> importInto: aClass from: aDictionary [
 	self compileProperties.
 	(DdLayoutEditor on: source) applyTo: aClass.
 	^ builder
+
 ]

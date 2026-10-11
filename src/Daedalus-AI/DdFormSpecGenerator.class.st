@@ -3,7 +3,8 @@ Class {
 	#superclass : 'Object',
 	#instVars : [
 		'client',
-		'attempts'
+		'attempts',
+		'targetClass'
 	],
 	#category : 'Daedalus-AI',
 	#package : 'Daedalus-AI'
@@ -73,14 +74,18 @@ DdFormSpecGenerator >> descriptionFor: aRequest current: aDescriptionOrNil [
 { #category : 'private' }
 DdFormSpecGenerator >> problemsIn: anAnswer [
 
-	| description |
+	| description builder |
 	description := [ STONJSON fromString: (self class jsonPartOf: anAnswer) ]
 		               on: Error
 		               do: [ ^ #( 'the answer is not valid JSON' ) ].
-	[ DdFormSpecLayoutBuilder sourceFor: description ]
+	builder := targetClass
+		           ifNil: [ DdFormSpecLayoutBuilder new ]
+		           ifNotNil: [ DdFormSpecImporter builderFor: targetClass ].
+	[ builder sourceFor: description ]
 		on: DdFormSpecError
 		do: [ :error | ^ error problems ].
 	^ #(  )
+
 ]
 
 { #category : 'private' }
@@ -90,4 +95,12 @@ DdFormSpecGenerator >> repairRequestFor: aCollection [
 	  , (String cr join: aCollection) , String cr
 	  ,
 	  'Fix them and answer with the whole corrected description, as JSON only.'
+]
+
+{ #category : 'accessing' }
+DdFormSpecGenerator >> targetClass: aClass [
+	"The class the answer will be imported into: its answers are checked against it."
+
+	targetClass := aClass
+
 ]

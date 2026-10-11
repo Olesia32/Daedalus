@@ -45,7 +45,7 @@ Class {
 { #category : 'layout' }
 DdTestPresenter >> defaultLayout [
 
-	^ SpBoxLayout new
+	^ SpBoxLayout newTopToBottom
 		  spacing: 10;
 		  add: titleLabel height: 26;
 		  add: listPresenter height: 67;
@@ -92,9 +92,9 @@ DdTestPresenter >> initializePresenters [
 	checkBox := SpCheckBoxPresenter new.
 	checkBox label: 'Check'.
 	titleLabel := LabelPresenter new.
-	titleLabel label: 'Test form'.
+	titleLabel label: 'Форма тестування'.
 	submitButton := ButtonPresenter new.
-	submitButton label: 'Submit'.
+	submitButton label: 'Надіслати'.
 	nameInputPresenter := TextInputPresenter new.
 	nameInputPresenter
 		text: 'Olesia';
@@ -103,40 +103,42 @@ DdTestPresenter >> initializePresenters [
 	date date: '20 June 2026'.
 	agreeCheckBox := CheckboxPresenter new.
 	agreeCheckBox
-		state: false;
+		state: true;
 		fontSize: 11;
-		label: 'I agree';
+		label: 'Я погоджуюся';
 		fontSize: 11;
 		state: true;
-		label: 'I agree'.
+		label: 'Я погоджуюся'.
 	genderGroup := RadioGroupPresenter new.
+	genderGroup columnCount: 3.
 	genderGroup
 		itemSelected: 1;
-		items: #( 'male' 'female' 'other' );
+		items: #( 'чоловіча' 'жіноча' 'інша' );
 		showFrame: false;
 		showTitle: true;
-		сolumnCount: 3;
-		title: 'Gender';
+		columnCount: 3;
+		title: 'Стать';
 		itemSelected: 1;
 		showFrame: false;
 		showTitle: true;
-		title: 'Gender';
-		items: #( 'male' 'female' 'other' );
-		сolumnCount: 3.
+		title: 'Стать';
+		items: #( 'чоловіча' 'жіноча' 'інша' );
+		columnCount: 3.
 	listPresenter := ListPresenter new.
 	listPresenter items: #( '1' '3' '6' '7' '4' '8' '13' ).
 	hobbyGroup := CheckboxGroupPresenter new.
+	hobbyGroup columnCount: 2.
 	hobbyGroup
 		selectedIndexes: #( 1 2 3 );
-		items: #( 'Cooking' 'Traveling' 'Running' );
+		items: #( 'Готування' 'Подорожі' 'Біг' );
 		showFrame: false;
 		showTitle: false;
-		сolumnCount: 2;
-		title: 'Hobby';
-		items: #( 'Cooking' 'Traveling' 'Running' );
+		columnCount: 2;
+		title: 'Хобі';
+		items: #( 'Готування' 'Подорожі' 'Біг' );
 		selectedIndexes: #( 1 2 3 );
 		showFrame: false;
 		showTitle: false;
-		сolumnCount: 2;
-		title: 'Hobby'
+		columnCount: 2;
+		title: 'Хобі'
 ]

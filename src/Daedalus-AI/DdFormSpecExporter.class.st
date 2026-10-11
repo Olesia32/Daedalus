@@ -190,14 +190,13 @@ DdFormSpecExporter >> readAssignment: anAssignment into: found [
 	info := Dictionary new.
 	info
 		at: #class put: className;
-		at: #type
-		put: ((DdFormSpecSchema widgetClassTypes at: className ifAbsent: [ nil ])
-				 ifNil: [ 'other' ]);
+		at: #type put: (DdFormSpecSchema typeOfClassNamed: className);
 		at: #props put: Dictionary new;
 		at: #style put: Dictionary new.
 	found at: anAssignment variable name asString put: info.
 	value isCascade ifTrue: [
 		value messages do: [ :each | self apply: each to: info ] ]
+
 ]
 
 { #category : 'layout' }
