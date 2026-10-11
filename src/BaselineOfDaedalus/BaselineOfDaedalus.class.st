@@ -7,15 +7,18 @@ Class {
 
 { #category : 'baselines' }
 BaselineOfDaedalus >> baseline: spec [ 
-    <baseline>
-    spec for: #common do: [
-        spec baseline: 'SpecComponentsLibrary'
-            with: [ spec repository: 'github://Olesia32/pharo-spec-components/src' ].
-        
-        spec package: 'Daedalus'
-            with: [ spec requires: #('SpecComponentsLibrary') ].
-        
-        spec postLoadDoIt: #patchSpNullApplication ]
+	<baseline>
+	spec for: #common do: [
+		spec
+			baseline: 'SpecComponentsLibrary'
+			with: [ spec repository: 'github://Olesia32/pharo-spec-components/src' ].
+ 
+		spec
+			package: 'Daedalus-AbsoluteLayout';
+			package: 'Daedalus'
+			with: [ spec requires: #( 'SpecComponentsLibrary' 'Daedalus-AbsoluteLayout' ) ].
+ 
+		spec postLoadDoIt: #patchSpNullApplication ]
 ]
 
 { #category : 'as yet unclassified' }

@@ -19,13 +19,8 @@ BaselineOfDaedalusAI >> baseline: spec [
 	spec for: #common do: [
 			spec
 				baseline: 'Daedalus'
-				with: [ spec repository: self class daedalusRepository ].
+				with: [ spec repository: 'github://Olesia32/Daedalus/src' ].
 			spec
-				package: 'Daedalus-AI' with: [ spec requires: #( 'Daedalus' ) ];
-				package: 'Daedalus-AI-Tests'
-				with: [ spec requires: #( 'Daedalus-AI' ) ].
-			spec
-				group: 'Core' with: #( 'Daedalus-AI' );
-				group: 'Tests' with: #( 'Daedalus-AI-Tests' );
-				group: 'default' with: #( 'Core' 'Tests' ) ]
+				package: 'Daedalus-AI'
+				with: [ spec requires: #( 'Daedalus' ) ] ]
 ]
