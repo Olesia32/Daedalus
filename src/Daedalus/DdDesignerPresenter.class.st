@@ -168,15 +168,16 @@ refreshPreview) because initializePresenters may have changed too."
 ]
 
 { #category : 'ai' }
-DdDesignerPresenter >> aiButton [
-"Made anew whenever the toolbar is: it keeps no state of its own."
+DdDesignerPresenter >> aiPage [
+	"The AI tab. Its content comes from the optional Daedalus-AI package, looked up by name so the
+	designer does not depend on it; without the package the tab stays empty."
 
-	^ self newButton
-		  label: 'AI';
-		  help:
-			  'Describe a form in words and let a model build it in this class';
-		  action: [ self openAiForm ];
-		  yourself
+	^ (Smalltalk globals at: #DdAiPanelPresenter ifAbsent: [ nil ])
+		  ifNil: [
+			  SpPresenter new
+				  layout: SpBoxLayout newTopToBottom;
+				  yourself ]
+		  ifNotNil: [ :panelClass | panelClass forDesigner: self ]
 ]
 
 { #category : 'resizing' }
@@ -304,13 +305,12 @@ DdDesignerPresenter >> editedClass [
 
 { #category : 'history' }
 DdDesignerPresenter >> historyToolbar [
-"Two small square icon buttons instead of two wide text buttons."
+	"Two small square icon buttons instead of two wide text buttons."
 
 	^ SpBoxLayout newLeftToRight
 		  spacing: 2;
 		  add: self undoButton width: 30;
 		  add: self redoButton width: 30;
-		  add: self aiButton width: 30;
 		  yourself
 ]
 
@@ -393,7 +393,7 @@ DdDesignerPresenter >> layoutPropertiesApplied: anEditor at: aPath [
 
 { #category : 'layout' }
 DdDesignerPresenter >> leftTabs [
-"Palette and component tree share the left column as two tabs. Widgets are dragged from the
+	"Palette and component tree share the left column as two tabs. Widgets are dragged from the
 palette onto the canvas, not into the tree, so both never need to be visible at once."
 
 	^ leftTabs ifNil: [
@@ -402,7 +402,8 @@ palette onto the canvas, not into the tree, so both never need to be visible at 
 				  addPage:
 					  (SpNotebookPage title: 'Widgets' provider: [ widgetPalette ]);
 				  addPage:
-					  (SpNotebookPage title: 'Structure' provider: [ componentTree ]).
+					  (SpNotebookPage title: 'Structure' provider: [ componentTree ]);
+				  addPage: (SpNotebookPage title: 'AI' provider: [ self aiPage ]).
 			  leftTabs ]
 ]
 
@@ -480,17 +481,6 @@ its Layout tab. Unsupported nodes change nothing."
 					(workArea selectWidgetNamed: varName) ifTrue: [
 							self onSelectionChanged.
 							componentTree selectNodeAtPath: path ] ] ]
-]
-
-{ #category : 'ai' }
-DdDesignerPresenter >> openAiForm [
-"Looked up by name, so the designer does not depend on the Daedalus-AI package."
-
-	(Smalltalk globals at: #DdAiFormDialog ifAbsent: [ nil ])
-		ifNil: [
-			self inform:
-				'Load the Daedalus-AI package to generate forms with AI' ]
-		ifNotNil: [ :dialogClass | (dialogClass forDesigner: self) open ]
 ]
 
 { #category : 'dragging' }

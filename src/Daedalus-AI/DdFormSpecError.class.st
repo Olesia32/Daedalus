@@ -4,9 +4,8 @@ Class {
 	#instVars : [
 		'problems'
 	],
-	#category : 'Daedalus-Daedalus-Import',
-	#package : 'Daedalus',
-	#tag : 'Daedalus-Import'
+	#category : 'Daedalus-AI',
+	#package : 'Daedalus-AI'
 }
 
 { #category : 'signalling' }

@@ -2,44 +2,169 @@ Class {
 	#name : 'DdAiSettings',
 	#superclass : 'Object',
 	#classVars : [
-		'ApiKey',
-		'Model'
+		'BaseUrls',
+		'Keys',
+		'Models',
+		'ProviderId'
 	],
 	#category : 'Daedalus-AI',
 	#package : 'Daedalus-AI'
 }
 
-{ #category : 'accessing' }
+{ #category : 'current provider' }
 DdAiSettings class >> apiKey [
-"Set in this image, otherwise the GEMINI_API_KEY environment variable; nil when neither."
 
-	(ApiKey notNil and: [ ApiKey notEmpty ]) ifTrue: [ ^ ApiKey ].
-	^ OSEnvironment current at: 'GEMINI_API_KEY' ifAbsent: [ nil ]
+	^ self keyFor: self provider
 ]
 
-{ #category : 'accessing' }
+{ #category : 'current provider' }
 DdAiSettings class >> apiKey: aString [
 
-	ApiKey := aString
+	self key: aString for: self provider
 ]
 
-{ #category : 'accessing' }
-DdAiSettings class >> defaultModel [
-"Google's suggestion for new projects (October 2026); any model of the free tier will do."
+{ #category : 'per provider' }
+DdAiSettings class >> baseUrl: aString for: aProvider [
 
-	^ 'gemini-3.5-flash-lite'
+	self baseUrls at: aProvider id put: aString
 ]
 
-{ #category : 'accessing' }
+{ #category : 'per provider' }
+DdAiSettings class >> baseUrlFor: aProvider [
+
+	| url |
+	url := self baseUrls at: aProvider id ifAbsent: [ '' ].
+	^ url isEmpty
+		  ifTrue: [ aProvider baseUrl ]
+		  ifFalse: [ url ]
+]
+
+{ #category : 'per provider' }
+DdAiSettings class >> baseUrls [
+	^ BaseUrls ifNil: [ BaseUrls := Dictionary new ]
+]
+
+{ #category : 'state' }
+DdAiSettings class >> forgetKeys [
+	"Before giving the image to someone else."
+
+	Keys := nil
+]
+
+{ #category : 'per provider' }
+DdAiSettings class >> key: aString for: aProvider [
+	self keys at: aProvider id put: aString
+]
+
+{ #category : 'per provider' }
+DdAiSettings class >> keyFor: aProvider [
+	"Typed in the settings, otherwise the provider's environment variable; nil when neither."
+
+	| key |
+	key := self storedKeyFor: aProvider.
+	key isEmpty ifFalse: [ ^ key ].
+	aProvider keyVariable ifNil: [ ^ nil ].
+	^ OSEnvironment current at: aProvider keyVariable ifAbsent: [ nil ]
+]
+
+{ #category : 'per provider' }
+DdAiSettings class >> keys [
+	^ Keys ifNil: [ Keys := Dictionary new ]
+]
+
+{ #category : 'current provider' }
 DdAiSettings class >> model [
-
-	^ (Model notNil and: [ Model notEmpty ])
-		  ifTrue: [ Model ]
-		  ifFalse: [ self defaultModel ]
+	^ self modelFor: self provider
 ]
 
-{ #category : 'accessing' }
+{ #category : 'current provider' }
 DdAiSettings class >> model: aString [
+	self model: aString for: self provider
+]
 
-	Model := aString
+{ #category : 'per provider' }
+DdAiSettings class >> model: aString for: aProvider [
+	self models at: aProvider id put: aString
+]
+
+{ #category : 'per provider' }
+DdAiSettings class >> modelFor: aProvider [
+
+	| model |
+	model := self models at: aProvider id ifAbsent: [ '' ].
+	^ model isEmpty
+		  ifTrue: [ aProvider defaultModel ]
+		  ifFalse: [ model ]
+]
+
+{ #category : 'per provider' }
+DdAiSettings class >> models [
+	^ Models ifNil: [ Models := Dictionary new ]
+]
+
+{ #category : 'clients' }
+DdAiSettings class >> newClient [
+	^ self newClientFor: self provider
+]
+
+{ #category : 'clients' }
+DdAiSettings class >> newClientFor: aProvider [
+
+	^ aProvider clientClass new
+		  setProvider: aProvider
+		  apiKey: (self keyFor: aProvider)
+		  model: (self modelFor: aProvider)
+		  baseUrl: (self baseUrlFor: aProvider);
+		  yourself
+]
+
+{ #category : 'provider' }
+DdAiSettings class >> provider [
+	^ DdLlmProvider named: self providerId
+]
+
+{ #category : 'provider' }
+DdAiSettings class >> providerId [
+	^ ProviderId ifNil: [ #gemini ]
+]
+
+{ #category : 'provider' }
+DdAiSettings class >> providerId: aSymbol [
+	ProviderId := aSymbol asSymbol
+]
+
+{ #category : 'state' }
+DdAiSettings class >> state [
+	^ {
+		  ProviderId.
+		  Keys.
+		  Models.
+		  BaseUrls }
+]
+
+{ #category : 'state' }
+DdAiSettings class >> state: anArray [
+
+	ProviderId := anArray first.
+	Keys := anArray second.
+	Models := anArray third.
+	BaseUrls := anArray fourth
+]
+
+{ #category : 'per provider' }
+DdAiSettings class >> storedKeyFor: aProvider [
+	"Only what was typed in the settings."
+
+	^ self keys at: aProvider id ifAbsent: [ '' ]
+]
+
+{ #category : 'current provider' }
+DdAiSettings class >> summary [
+	"Gemini - gemini-3.5-flash-lite"
+
+	| model |
+	model := self model.
+	^ self provider label , ' - ' , (model isEmpty
+		   ifTrue: [ 'no model chosen' ]
+		   ifFalse: [ model ])
 ]
