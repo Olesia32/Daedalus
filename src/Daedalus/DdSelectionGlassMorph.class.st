@@ -49,16 +49,21 @@ DdSelectionGlassMorph >> currentTargetFromProvider [
 
 { #category : 'drawing' }
 DdSelectionGlassMorph >> drawOn: aCanvas [
+	| clip |
+	clip := self hasLiveTarget ifTrue: [ DdCanvasMap clipRectangleOf: targetMorph ] ifFalse: [ nil ].
+	clip ifNil: [ ^ self drawSelectionOn: aCanvas ].
+	aCanvas clipBy: clip during: [ :clipped | self drawSelectionOn: clipped ]
+]
 
+{ #category : 'drawing' }
+DdSelectionGlassMorph >> drawSelectionOn: aCanvas [
 	| rectangle |
 	rectangle := self frameRectangle.
 	rectangle ifNil: [ ^ self ].
 	aCanvas frameRectangle: rectangle width: 1 color: self frameColor.
-	(DdResizeHandles
-		 rectanglesFor: rectangle
-		 names: self currentHandleNames) do: [ :square |
-			aCanvas fillRectangle: square color: Color white.
-			aCanvas frameRectangle: square width: 1 color: self frameColor ]
+	(DdResizeHandles rectanglesFor: rectangle names: self currentHandleNames) do: [ :square |
+		aCanvas fillRectangle: square color: Color white.
+		aCanvas frameRectangle: square width: 1 color: self frameColor ]
 ]
 
 { #category : 'accessing' }

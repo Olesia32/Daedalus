@@ -253,7 +253,7 @@ DdDesignerPresenter >> defaultLayout [
 		  spacing: 10;
 		  add: self historyToolbar expand: false;
 		  add: self mainRowLayout;
-		  add: codeEditor height: 150;
+		  add: codeEditor height: 180;
 		  yourself
 ]
 
@@ -458,7 +458,7 @@ DdDesignerPresenter >> onSelectionChanged [
 		onClass: tmp1 owner class
 		canvas: workArea.
 	tmp2 := workArea instVarNameForPresenterInRoot: tmp1.
-	codeEditor highlightVarName: tmp2.
+	codeEditor highlightWidgetNamed: tmp2.
 	workArea updateSelectionOverlay
 ]
 
@@ -644,9 +644,11 @@ DdDesignerPresenter >> resizeGridChild: aNode handle: aHandleName to: aRectangle
 
 { #category : 'resizing' }
 DdDesignerPresenter >> resizeHandleAt: aPoint [
-"The name of the selected widget's resize handle under aPoint, or nil."
-
+	"The name of the selected widget's resize handle under aPoint, or nil. A handle scrolled out of
+	sight does not count: the press is then on a scroll bar or another panel."
 	| rectangle names |
+	workArea visibleCanvasRectangle ifNotNil: [ :clip |
+		(clip containsPoint: aPoint) ifFalse: [ ^ nil ] ].
 	rectangle := self selectedWidgetRectangle.
 	rectangle ifNil: [ ^ nil ].
 	names := workArea selectedResizeHandles.
@@ -785,22 +787,17 @@ DdDesignerPresenter >> selectedWidgetRectangle [
 
 { #category : 'layout properties' }
 DdDesignerPresenter >> showLayoutPropertiesFor: aNode [
-
 	| path |
 	path := aNode path.
-	layoutPanel := [
-	               DdLayoutPropertiesPresenter
-		               forClass: presenter
-		               path: path ]
-		               on: Error
-		               do: [ :error |
-		               ^ componentTree notifyUser: error messageText ].
-	layoutPanel whenAppliedDo: [ :editor |
-		self layoutPropertiesApplied: editor at: path ].
+	layoutPanel := [ DdLayoutPropertiesPresenter forClass: presenter path: path ]
+		on: Error
+		do: [ :error | ^ componentTree notifyUser: error messageText ].
+	layoutPanel whenAppliedDo: [ :editor | self layoutPropertiesApplied: editor at: path ].
 	showingLayout := true.
 	workArea selectContainerAt: path.
 	self rebuildLayout.
-	workArea updateSelectionOverlay
+	workArea updateSelectionOverlay.
+	codeEditor highlightNodeAt: path
 ]
 
 { #category : 'layout properties' }

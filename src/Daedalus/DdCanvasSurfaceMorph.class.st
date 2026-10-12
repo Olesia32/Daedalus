@@ -82,12 +82,12 @@ DdCanvasSurfaceMorph >> extentProvider: aBlock [
 
 { #category : 'geometry' }
 DdCanvasSurfaceMorph >> formBounds [
-"The form keeps its own size and lies centered on the surface; it only shrinks when the surface
+	"The form keeps its own size and lies centered on the surface; it only shrinks when the surface
 is too small to hold it with the margin around."
 
 	| available extent |
 	available := self bounds insetBy: self margin.
-	extent := (self formExtent min: available extent) max: 50 @ 50.
+	extent := self formExtent max: 50 @ 50.
 	^ Rectangle center: available center extent: extent
 ]
 
@@ -136,6 +136,13 @@ DdCanvasSurfaceMorph >> margin [
 "Minimum strip of surface kept visible around the form."
 
 	^ 24
+]
+
+{ #category : 'layout' }
+DdCanvasSurfaceMorph >> minExtent [
+	"Never smaller than the form with its margin and shadow: the scroll pane around the surface
+	then scrolls instead of squeezing the form."
+	^ (self formExtent max: 50 @ 50) + (2 * self margin) + (4 @ 5)
 ]
 
 { #category : 'colors' }

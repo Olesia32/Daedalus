@@ -29,23 +29,70 @@ Class {
 		'surfaceMorph',
 		'surfacePresenter',
 		'formExtent',
-		'selectedContainerPath'
+		'selectedContainerPath',
+		'scrollPane',
+		'lastFormExtent',
+		'lastPreviewLayout'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
 	#tag : 'Daedalus-UI'
 }
 
-{ #category : 'instance creation' }
-DdCanvasPresenter class >> onPresenter: aPresenter [
-"The colors are applied once the canvas has a morph of its own; rebuildPreview/refreshPreview
-apply them again whenever the preview morphs are replaced."
+{ #category : 'geometry' }
+DdCanvasPresenter class >> defaultFormExtent [
+	"The size the form is shown at while its content fits in it."
+	^ 480 @ 360
+]
 
-	| canvas |
-	canvas := self new.
-	canvas whenBuiltDo: [ canvas applyCanvasColors ].
-	canvas editedPresenter: aPresenter.
-	^ canvas
+{ #category : 'geometry' }
+DdCanvasPresenter class >> farthestCornerOf: aMorph [
+	"The bottom-right corner of what really needs room inside aMorph.
+	- A side that is #spaceFill only follows its owner's size: it does not count, its content does.
+	- An empty morph (no width or no height) needs no room: Spec's empty end panel of a box
+	  (SpMorphicBoxAdapter>>newVertical) sits one spacing below the last child.
+	- Every Spec layout panel clips its submorphs (SpMorphicLayoutAdapter>>newPanelWith:), and what
+	  sticks out of it is exactly what gets cut off - so clipping morphs are looked into. Only a
+	  TransformMorph (the scrolled contents of lists and text) is not: there it is on purpose."
+	| corner |
+	corner := (aMorph width > 0 and: [ aMorph height > 0 ])
+		ifTrue: [
+			(aMorph hResizing = #spaceFill ifTrue: [ aMorph left ] ifFalse: [ aMorph right ])
+				@ (aMorph vResizing = #spaceFill ifTrue: [ aMorph top ] ifFalse: [ aMorph bottom ]) ]
+		ifFalse: [ SmallInteger minVal @ SmallInteger minVal ].
+	(aMorph isKindOf: TransformMorph) ifTrue: [ ^ corner ].
+	aMorph submorphsDo: [ :each |
+		each visible ifTrue: [ corner := corner max: (self farthestCornerOf: each) ] ].
+	^ corner
+]
+
+{ #category : 'geometry' }
+DdCanvasPresenter class >> maxFormExtent [
+	"A guard: a widget that always outgrows whatever room it gets must not grow the form forever."
+	^ 3000 @ 3000
+]
+
+{ #category : 'instance creation' }
+DdCanvasPresenter class >> onPresenter: arg1 [
+
+	| tmp1 |
+	tmp1 := self new.
+	tmp1
+		whenBuiltDo: [ tmp1 applyCanvasColors ];
+		editedPresenter: arg1.
+	^ tmp1
+]
+
+{ #category : 'geometry' }
+DdCanvasPresenter class >> overflowOf: aMorph [
+	"How far the content of aMorph sticks out of it to the right and below (0 @ 0 when it fits).
+	Its own children are always looked at, even when it clips them - that is exactly the content
+	that would be cut off."
+	| corner |
+	corner := aMorph bounds corner.
+	aMorph submorphsDo: [ :each |
+		each visible ifTrue: [ corner := corner max: (self farthestCornerOf: each) ] ].
+	^ (corner - aMorph bounds corner) max: 0 @ 0
 ]
 
 { #category : 'appearance' }
@@ -61,17 +108,18 @@ DdCanvasPresenter >> clearContainerSelection [
 ]
 
 { #category : 'selection' }
-DdCanvasPresenter >> containerMorphAt: aPath [
+DdCanvasPresenter >> containerMorphAt: arg1 [
 
-	| root |
+	| tmp1 |
 	(designer isNil or: [ rootPreviewPresenter isNil ]) ifTrue: [ ^ nil ].
-	root := designer componentTree rootNode.
-	root ifNil: [ ^ nil ].
+	nil.
+	tmp1 := designer componentTree rootNode.
+	tmp1 ifNil: [ ^ nil ] ifNotNil: [ tmp1 ].
 	^ [
-		  (DdCanvasMap presenter: rootPreviewPresenter model: root)
-			  morphAt: aPath ]
+		  (DdCanvasMap presenter: rootPreviewPresenter model: tmp1)
+			  morphAt: arg1 ]
 		  on: Error
-		  do: [ nil ]
+		  do: [ ]
 ]
 
 { #category : 'selection' }
@@ -98,17 +146,14 @@ DdCanvasPresenter >> containerOutlineEntries [
 
 { #category : 'selection' }
 DdCanvasPresenter >> containerOutlineOverlay [
-"The overlay that outlines every live container on the canvas. Lives in the Morphic world, like
-selectionOverlay, not in the layout of the preview."
-
+	"The overlay that outlines every live container on the canvas. Lives in the Morphic world, like
+	selectionOverlay, not in the layout of the preview; it is cut to the visible part of the canvas."
 	^ containerOutlineOverlay ifNil: [
-			  containerOutlineOverlay := DdContainerOutlinesMorph new
-				                             anchorProvider: [
-					                             self adapter ifNotNil: [ :anAdapter |
-							                             anAdapter widget ] ];
-				                             entriesProvider: [
-					                             self containerOutlineEntries ];
-				                             yourself ]
+		containerOutlineOverlay := DdContainerOutlinesMorph new
+			anchorProvider: [ self adapter ifNotNil: [ :anAdapter | anAdapter widget ] ];
+			entriesProvider: [ self containerOutlineEntries ];
+			clipProvider: [ self visibleCanvasRectangle ];
+			yourself ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -186,29 +231,72 @@ hides it until a live preview actually exists, and keeps it positioned over that
 
 { #category : 'appearance' }
 DdCanvasPresenter >> ensureSurfaceLayout [
-"The canvas's own layout is built once: a single morph presenter holding the surface. Rebuilding
-the preview after that only swaps the morph lying on the surface."
 
+	| tmp1 |
 	surfacePresenter ifNotNil: [ ^ self ].
 	surfacePresenter := self newMorph.
-	surfacePresenter morph: self surfaceMorph.
-	self layout: (SpBoxLayout new
-			 add: surfacePresenter;
-			 yourself)
+	surfacePresenter morph: self surfaceScrollPane.
+	tmp1 := SpBoxLayout new.
+	tmp1 add: surfacePresenter.
+	self layout: tmp1 yourself
+]
+
+{ #category : 'appearance' }
+DdCanvasPresenter >> fittedFormExtent [
+
+	| layout preview needed padding overflow |
+	layout := rootPreviewPresenter ifNotNil: [ :aPresenter |
+		          aPresenter layout ].
+	layout == lastPreviewLayout ifFalse: [
+			lastPreviewLayout := layout.
+			lastFormExtent := nil ].
+	needed := lastFormExtent ifNil: [ self class defaultFormExtent ].
+	padding := self surfaceMorph sheetPadding.
+	preview := self previewContainerMorph.
+	(preview notNil and: [
+		 preview world notNil and: [
+			 preview extent = (needed - (2 * padding)) ] ]) ifTrue: [
+			overflow := [
+				            preview fullBounds.
+				            self class overflowOf: preview ]
+				            on: Error
+				            do: [ 0 @ 0 ].
+			(overflow x > 2 or: [ overflow y > 2 ]) ifTrue: [
+				needed := (needed + overflow + (4 @ 4)) rounded ] ].
+	needed := needed min: self class maxFormExtent.
+	needed = lastFormExtent ifFalse: [
+			lastFormExtent := needed.
+			self formExtentChanged ].
+	^ needed
 ]
 
 { #category : 'appearance' }
 DdCanvasPresenter >> formExtent [
-"The size the form is shown at. A fixed default for now; a resize handle on the form can set it."
 
-	^ formExtent ifNil: [ 480 @ 360 ]
+	^ formExtent ifNil: [ self fittedFormExtent ] ifNotNil: [ formExtent ]
 ]
 
 { #category : 'appearance' }
-DdCanvasPresenter >> formExtent: aPoint [
+DdCanvasPresenter >> formExtent: arg1 [
 
-	formExtent := aPoint.
-	surfaceMorph ifNotNil: [ :surface | surface syncPreview ]
+	| tmp1 tmp2 |
+	formExtent := arg1.
+	tmp2 := tmp1 := surfaceMorph.
+	tmp2 ifNotNil: [ tmp1 syncPreview ]
+]
+
+{ #category : 'appearance' }
+DdCanvasPresenter >> formExtentChanged [
+	"The surface's minimum size follows the form: let the scroll pane lay it out again and
+	update its scroll bars (on the next UI cycle, once the new size is known)."
+	UIManager default defer: [
+		[
+			surfaceMorph ifNotNil: [ :surface | surface layoutChanged ].
+			scrollPane ifNotNil: [ :pane |
+				pane fullBounds.
+				(pane respondsTo: #updateScrollbars) ifTrue: [ pane updateScrollbars ] ] ]
+			on: Error
+			do: [ :error | ] ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -312,7 +400,6 @@ of it, so nothing underneath (its widgets) ever sees a mouseDown."
 
 { #category : 'appearance' }
 DdCanvasPresenter >> reapplyCanvasColors [
-"Now and once more on the next UI cycle, in case Spec builds the new morphs a little later."
 
 	self applyCanvasColors.
 	UIManager default defer: [ self applyCanvasColors ]
@@ -336,29 +423,27 @@ DdCanvasPresenter >> rebuildPreview [
 
 { #category : 'accessing' }
 DdCanvasPresenter >> refreshPreview [
-"Re-runs initializePresenters and defaultLayout on the existing root preview instance, restores
-the selection by variable name, puts the (possibly new) preview morph back on the surface and
-reinstalls click hooks."
 
-	| subVarName |
-	subVarName := selectedPresenter ifNotNil: [
-		              self instVarNameForPresenterInRoot: selectedPresenter ].
+	| tmp1 tmp2 tmp3 tmp4 |
+	tmp1 := selectedPresenter ifNotNil: [
+		        self instVarNameForPresenterInRoot: selectedPresenter ].
 	SpNullApplication skipReset: true.
 	[
-		rootPreviewPresenter initializePresenters.
-		rootPreviewPresenter layout: rootPreviewPresenter defaultLayout ]
-		ensure: [ SpNullApplication skipReset: false ].
-	subVarName ifNotNil: [
-			| idx |
-			idx := rootPreviewPresenter class allInstVarNames indexOf:
-				       subVarName.
-			idx > 0 ifTrue: [
-				selectedPresenter := rootPreviewPresenter instVarAt: idx ] ].
+		rootPreviewPresenter
+			initializePresenters;
+			layout: rootPreviewPresenter defaultLayout ] ensure: [
+		SpNullApplication skipReset: false ].
+	tmp1 ifNotNil: [
+			tmp2 := rootPreviewPresenter class allInstVarNames indexOf: tmp1.
+			tmp2 > 0 ifTrue: [
+				selectedPresenter := rootPreviewPresenter instVarAt: tmp2 ] ].
 	self surfaceMorph syncPreview.
-	self installClickHooks.
-	self reapplyCanvasColors.
+	self
+		installClickHooks;
+		reapplyCanvasColors.
 	designer ifNotNil: [ designer onSelectionChanged ].
-	designer ifNotNil: [ :aDesigner | aDesigner recordHistory ]
+	tmp4 := tmp3 := designer.
+	tmp4 ifNotNil: [ tmp3 recordHistory ]
 ]
 
 { #category : 'accessing' }
@@ -368,10 +453,9 @@ DdCanvasPresenter >> rootPreviewPresenter [
 ]
 
 { #category : 'selection' }
-DdCanvasPresenter >> selectContainerAt: aPath [
-"A container is selected instead of a widget: the frame and the resize handles follow it."
+DdCanvasPresenter >> selectContainerAt: arg1 [
 
-	selectedContainerPath := aPath
+	selectedContainerPath := arg1
 ]
 
 { #category : 'selection' }
@@ -403,21 +487,21 @@ DdCanvasPresenter >> selectedPresenter [
 
 { #category : 'selection' }
 DdCanvasPresenter >> selectedResizeHandles [
-	"The resize handles of the selection (a container or a widget), from its node in the tree's model."
 
-	| root varName node |
-	designer ifNil: [ ^ #(  ) ].
-	root := designer componentTree rootNode.
-	root ifNil: [ ^ #(  ) ].
-	selectedContainerPath ifNotNil: [ :path |
-			^ [ (root nodeAtPath: path) resizeHandles ]
+	| tmp1 tmp2 tmp3 tmp4 tmp5 tmp6 |
+	designer ifNil: [ ^ #(  ) ] ifNotNil: [ designer ].
+	tmp1 := designer componentTree rootNode.
+	tmp1 ifNil: [ ^ #(  ) ] ifNotNil: [ tmp1 ].
+	tmp6 := tmp4 := selectedContainerPath.
+	tmp6 ifNotNil: [
+			^ [ (tmp1 nodeAtPath: tmp4) resizeHandles ]
 				  on: Error
 				  do: [ #(  ) ] ].
-	selectedPresenter ifNil: [ ^ #(  ) ].
-	varName := self instVarNameForPresenterInRoot: selectedPresenter.
-	varName ifNil: [ ^ #(  ) ].
-	node := root findWidgetNamed: varName.
-	^ node ifNil: [ #(  ) ] ifNotNil: [ :aNode | aNode resizeHandles ]
+	selectedPresenter ifNil: [ ^ #(  ) ] ifNotNil: [ selectedPresenter ].
+	tmp2 := self instVarNameForPresenterInRoot: selectedPresenter.
+	tmp2 ifNil: [ ^ #(  ) ] ifNotNil: [ tmp2 ].
+	tmp3 := tmp1 findWidgetNamed: tmp2.
+	^ (tmp5 := tmp3) ifNil: [ #(  ) ] ifNotNil: [ tmp5 resizeHandles ]
 ]
 
 { #category : 'selection' }
@@ -433,33 +517,34 @@ DdCanvasPresenter >> selectedWidgetMorph [
 { #category : 'selection' }
 DdCanvasPresenter >> selectionOverlay [
 
-	^ selectionOverlay ifNil: [
-			  selectionOverlay := DdSelectionGlassMorph new
-				                      targetProvider: [ self selectionTargetMorph ];
-				                      handlesProvider: [
-					                      self selectedResizeHandles ];
-				                      yourself ]
+	| tmp1 |
+	^ selectionOverlay
+		  ifNil: [
+				  tmp1 := DdSelectionGlassMorph new.
+				  tmp1
+					  targetProvider: [ self selectionTargetMorph ];
+					  handlesProvider: [ self selectedResizeHandles ].
+				  selectionOverlay := tmp1 yourself ]
+		  ifNotNil: [ selectionOverlay ]
 ]
 
 { #category : 'selection' }
 DdCanvasPresenter >> selectionTargetMorph [
-"What the selection frame goes around: the selected container, or else the selected widget."
 
-	selectedContainerPath ifNotNil: [ :path |
-		^ self containerMorphAt: path ].
+	| tmp1 tmp2 |
+	tmp2 := tmp1 := selectedContainerPath.
+	tmp2 ifNotNil: [ ^ self containerMorphAt: tmp1 ].
 	^ self selectedWidgetMorph
 ]
 
 { #category : 'appearance' }
 DdCanvasPresenter >> sheetColor [
-"The form's own background: light grey like a window pane on a light theme, so white fields and
-lists stand out on it."
 
-	| base |
-	base := Smalltalk ui theme backgroundColor.
-	^ base luminance > 0.5
+	| tmp1 |
+	tmp1 := Smalltalk ui theme backgroundColor.
+	^ tmp1 luminance > 0.5
 		  ifTrue: [ Color gray: 0.88 ]
-		  ifFalse: [ base ]
+		  ifFalse: [ tmp1 ]
 ]
 
 { #category : 'selection' }
@@ -498,24 +583,42 @@ DdCanvasPresenter >> shieldMouseDown: anEvent [
 { #category : 'appearance' }
 DdCanvasPresenter >> surfaceMorph [
 
-	^ surfaceMorph ifNil: [
-			  surfaceMorph := DdCanvasSurfaceMorph new.
-			  surfaceMorph
-				  previewProvider: [ self previewContainerMorph ];
-				  extentProvider: [ self formExtent ];
-				  hResizing: #spaceFill;
-				  vResizing: #spaceFill.
-			  surfaceMorph ]
+	^ surfaceMorph
+		  ifNil: [
+				  surfaceMorph := DdCanvasSurfaceMorph new.
+				  surfaceMorph
+					  previewProvider: [ self previewContainerMorph ];
+					  extentProvider: [ self formExtent ];
+					  hResizing: #spaceFill;
+					  vResizing: #spaceFill.
+				  surfaceMorph ]
+		  ifNotNil: [ surfaceMorph ]
+]
+
+{ #category : 'appearance' }
+DdCanvasPresenter >> surfaceScrollPane [
+	"The surface lies in a scroll pane, built the way SpMorphicScrollableAdapter builds one: the
+	surface fills it, but never below its minExtent - a bigger form makes the pane scroll.
+	The surface is also given its size straight from fittedFormExtent here, so the form follows
+	its content whatever DdCanvasPresenter>>formExtent says."
+	^ scrollPane ifNil: [
+		self surfaceMorph extentProvider: [ self fittedFormExtent ].
+		scrollPane := GeneralScrollPaneMorph new
+			changeScrollerTableLayout;
+			hResizing: #spaceFill;
+			vResizing: #spaceFill;
+			color: Color transparent;
+			borderColor: Color transparent;
+			scrollTarget: self surfaceMorph;
+			yourself ]
 ]
 
 { #category : 'appearance' }
 DdCanvasPresenter >> surroundColor [
-"The work surface around the form: the sheet color pushed towards black on a light theme and
-towards white on a dark one, so the edge of the form is always visible."
 
-	| base |
-	base := self sheetColor.
-	^ base mixed: 0.8 with: (base luminance > 0.5
+	| tmp1 |
+	tmp1 := self sheetColor.
+	^ tmp1 mixed: 0.8 with: (tmp1 luminance > 0.5
 			   ifTrue: [ Color black ]
 			   ifFalse: [ Color white ])
 ]
@@ -540,6 +643,12 @@ DdCanvasPresenter >> updateSelectionOverlay [
 		         anAdapter widget ifNotNil: [ :morph | morph world ] ].
 	self selectionOverlay showIn: world.
 	self updateContainerOutlineOverlay
+]
+
+{ #category : 'appearance' }
+DdCanvasPresenter >> visibleCanvasRectangle [
+	"Where the canvas shows the preview right now (world coordinates), or nil."
+	^ self previewContainerMorph ifNotNil: [ :morph | DdCanvasMap clipRectangleOf: morph ]
 ]
 
 { #category : 'as yet unclassified' }

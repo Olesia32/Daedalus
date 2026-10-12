@@ -11,6 +11,23 @@ Class {
 	#tag : 'Daedalus-UI'
 }
 
+{ #category : 'geometry' }
+DdCanvasMap class >> clipRectangleOf: aMorph [
+	"The part of the world in which aMorph can be seen: the bounds of every owner that clips its
+	submorphs (the scroll pane's scroller, the canvas surface), cut by each other. nil when nothing
+	clips it; an empty rectangle when it is scrolled out of sight."
+	| rectangle current |
+	rectangle := nil.
+	current := aMorph owner.
+	[ current notNil and: [ current isWorldMorph not ] ] whileTrue: [
+		(current clipSubmorphs or: [ current isKindOf: TransformMorph ]) ifTrue: [
+			rectangle := rectangle
+				ifNil: [ current boundsInWorld ]
+				ifNotNil: [ rectangle intersect: current boundsInWorld ifNone: [ 0 @ 0 extent: 0 @ 0 ] ] ].
+		current := current owner ].
+	^ rectangle
+]
+
 { #category : 'instance creation' }
 DdCanvasMap class >> presenter: aPresenter model: aRootNode [
 "Maps every node of the layout model to the morph the preview built for it. The two trees
@@ -38,6 +55,7 @@ DdCanvasMap >> buildFrom: aPresenter model: aRootNode [
 
 { #category : 'finding' }
 DdCanvasMap >> dropTargetAt: aPoint dragging: aPathOrNil [
+	(self isVisiblePoint: aPoint) ifFalse: [ ^ nil ].
 	^ self finder targetAt: aPoint dragging: aPathOrNil
 ]
 
@@ -90,6 +108,15 @@ DdCanvasMap >> isComplete [
 	"False when the live layout did not match the model, so some nodes have no morph."
 
 	^ complete
+]
+
+{ #category : 'finding' }
+DdCanvasMap >> isVisiblePoint: aPoint [
+	"False over a part of the preview that is scrolled out of sight (the pointer is then over the
+	scroll bars or another panel)."
+	| clip |
+	clip := (self morphAt: #(  )) ifNotNil: [ :morph | self class clipRectangleOf: morph ].
+	^ clip isNil or: [ clip containsPoint: aPoint ]
 ]
 
 { #category : 'building' }

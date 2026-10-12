@@ -6,7 +6,8 @@ Class {
 		'entriesProvider',
 		'lastEntries',
 		'idleSteps',
-		'hoveredEntry'
+		'hoveredEntry',
+		'clipProvider'
 	],
 	#category : 'Daedalus-Daedalus-UI',
 	#package : 'Daedalus',
@@ -17,6 +18,13 @@ Class {
 DdContainerOutlinesMorph >> anchorProvider: aBlock [
 
 	anchorProvider := aBlock
+]
+
+{ #category : 'accessing' }
+DdContainerOutlinesMorph >> clipProvider: aBlock [
+	"aBlock answers the rectangle (world coordinates) outside of which nothing is drawn, or nil."
+	clipProvider := aBlock.
+	self changed
 ]
 
 { #category : 'geometry testing' }
@@ -34,6 +42,13 @@ DdContainerOutlinesMorph >> currentAnchorFromProvider [
 ]
 
 { #category : 'private' }
+DdContainerOutlinesMorph >> currentClip [
+	^ [ clipProvider ifNotNil: [ :provider | provider value ] ]
+		on: Error
+		do: [ nil ]
+]
+
+{ #category : 'private' }
 DdContainerOutlinesMorph >> currentEntriesFromProvider [
 
 	^ [
@@ -46,9 +61,27 @@ DdContainerOutlinesMorph >> currentEntriesFromProvider [
 
 { #category : 'drawing' }
 DdContainerOutlinesMorph >> drawOn: aCanvas [
-"Thin outlines for every container, and a label only for the one under the mouse - labels on all
-of them overlapped the widgets they contain."
+	| clip |
+	clip := self currentClip.
+	clip ifNil: [ ^ self drawOutlinesOn: aCanvas ].
+	aCanvas clipBy: clip during: [ :clipped | self drawOutlinesOn: clipped ]
+]
 
+{ #category : 'drawing' }
+DdContainerOutlinesMorph >> drawOutline: arg1 on: arg2 [
+
+	(arg1 height < 6 or: [ arg1 width < 6 ]) ifTrue: [
+			^ arg2
+				  fillRectangle: (arg1 origin extent: (arg1 width max: 60) @ 6)
+				  color: (self outlineColor alpha: 0.6) ].
+	nil.
+	arg2 frameRectangle: arg1 width: 1 color: self outlineColor
+]
+
+{ #category : 'drawing' }
+DdContainerOutlinesMorph >> drawOutlinesOn: aCanvas [
+	"Thin outlines for every container, and a label only for the one under the mouse - labels on all
+	of them overlapped the widgets they contain."
 	lastEntries ifNil: [ ^ self ].
 	lastEntries do: [ :entry | self drawOutline: entry key on: aCanvas ].
 	hoveredEntry ifNotNil: [ :entry |
@@ -56,45 +89,27 @@ of them overlapped the widgets they contain."
 ]
 
 { #category : 'drawing' }
-DdContainerOutlinesMorph >> drawOutline: aRectangle on: aCanvas [
-"An empty container is (nearly) zero-high and would be invisible: it is shown as a short strip
-instead, so it can be seen, hovered and dropped into."
+DdContainerOutlinesMorph >> drawTag: arg1 for: arg2 on: arg3 [
 
-	(aRectangle height < 6 or: [ aRectangle width < 6 ]) ifTrue: [
-			^ aCanvas
-				  fillRectangle:
-				  (aRectangle origin extent: (aRectangle width max: 60) @ 6)
-				  color: (self outlineColor alpha: 0.6) ].
-	aCanvas frameRectangle: aRectangle width: 1 color: self outlineColor
-]
-
-{ #category : 'drawing' }
-DdContainerOutlinesMorph >> drawTag: aLabel for: aRectangle on: aCanvas [
-"A filled label just above the container's top edge (inside it when there is no room above),
-plus a thin frame in the same color."
-
-	| font textExtent tag |
-	font := StandardFonts defaultFont.
-	textExtent := (font widthOfString: aLabel) @ font height.
-	tag := aRectangle topLeft - (0 @ (textExtent y + 2)) extent:
-		       textExtent + (8 @ 2).
-	tag top < self bounds top ifTrue: [
-		tag := tag translateBy: 0 @ (textExtent y + 2) ].
-	aCanvas frameRectangle: aRectangle width: 1 color: self tagColor.
-	aCanvas fillRectangle: tag color: self tagColor.
-	aCanvas
-		drawString: aLabel
-		at: tag topLeft + (4 @ 1)
-		font: font
+	| tmp1 tmp2 tmp3 |
+	tmp1 := StandardFonts defaultFont.
+	tmp2 := (tmp1 widthOfString: arg1) @ tmp1 height.
+	tmp3 := arg2 topLeft - (0 @ (tmp2 y + 2)) extent: tmp2 + (8 @ 2).
+	tmp3 top < self bounds top ifTrue: [
+		tmp3 := tmp3 translateBy: 0 @ (tmp2 y + 2) ].
+	arg3
+		frameRectangle: arg2 width: 1 color: self tagColor;
+		fillRectangle: tmp3 color: self tagColor;
+		drawString: arg1
+		at: tmp3 topLeft + (4 @ 1)
+		font: tmp1
 		color: DdDesignerTheme onAccent
 ]
 
 { #category : 'accessing' }
-DdContainerOutlinesMorph >> entriesProvider: aBlock [
-"aBlock is evaluated at every step and answers a collection of rectangle -> label associations
-(world coordinates), one per container to outline."
+DdContainerOutlinesMorph >> entriesProvider: arg1 [
 
-	entriesProvider := aBlock.
+	entriesProvider := arg1.
 	lastEntries := nil.
 	self changed
 ]
@@ -183,15 +198,15 @@ DdContainerOutlinesMorph >> showOutlines [
 
 { #category : 'stepping and presenter' }
 DdContainerOutlinesMorph >> step [
-"A stepping morph must never throw: it would fail again on every step and freeze the image."
 
 	[
-		self syncWithProviders.
-		self updateHover ]
+		self
+			syncWithProviders;
+			updateHover ]
 		on: Error
-		do: [ :error |
+		do: [ :arg1 |
 				Transcript
-					show: 'DdContainerOutlinesMorph stopped: ' , error description;
+					show: 'DdContainerOutlinesMorph stopped: ' , arg1 description;
 					cr.
 				anchorProvider := nil.
 				entriesProvider := nil.
@@ -200,7 +215,6 @@ DdContainerOutlinesMorph >> step [
 
 { #category : 'stepping and presenter' }
 DdContainerOutlinesMorph >> stepTime [
-"Shorter than before so the hover label follows the mouse without a visible lag."
 
 	^ 100
 ]
@@ -208,24 +222,24 @@ DdContainerOutlinesMorph >> stepTime [
 { #category : 'stepping' }
 DdContainerOutlinesMorph >> syncWithProviders [
 
-	| topMorph anchor entries |
+	| tmp1 tmp2 tmp3 |
 	self hasLiveAnchor ifFalse: [
 			idleSteps := idleSteps + 1.
 			self hideOutlines.
 			idleSteps > 50 ifTrue: [ self delete ].
 			^ self ].
 	idleSteps := 0.
-	anchor := self currentAnchorFromProvider.
-	topMorph := self topMorphOf: anchor.
-	(self isFrontWindow: topMorph) ifFalse: [ ^ self hideOutlines ].
+	tmp2 := self currentAnchorFromProvider.
+	tmp1 := self topMorphOf: tmp2.
+	(self isFrontWindow: tmp1) ifFalse: [ ^ self hideOutlines ].
 	self showOutlines.
-	topMorph fullBounds.
-	self bounds = topMorph bounds ifFalse: [
-		self bounds: topMorph bounds ].
-	self keepAbove: topMorph.
-	entries := self currentEntriesFromProvider.
-	entries = lastEntries ifTrue: [ ^ self ].
-	lastEntries := entries.
+	tmp1 fullBounds.
+	self bounds = tmp1 bounds ifFalse: [ self bounds: tmp1 bounds ].
+	self keepAbove: tmp1.
+	tmp3 := self currentEntriesFromProvider.
+	tmp3 = lastEntries ifTrue: [ ^ self ].
+	nil.
+	lastEntries := tmp3.
 	self changed
 ]
 
@@ -248,17 +262,17 @@ DdContainerOutlinesMorph >> topMorphOf: aMorph [
 
 { #category : 'stepping' }
 DdContainerOutlinesMorph >> updateHover [
-"The deepest (smallest) container under the mouse, redrawn only when it changes."
-
-	| point best |
+	"The deepest (smallest) container under the mouse, redrawn only when it changes. Nothing is
+	hovered over a part of the canvas that is scrolled away."
+	| point best clip |
 	point := self world ifNotNil: [ :aWorld | aWorld activeHand position ].
+	clip := self currentClip.
+	(point notNil and: [ clip notNil and: [ (clip containsPoint: point) not ] ]) ifTrue: [ point := nil ].
 	best := nil.
-	(point notNil and: [ self visible and: [ lastEntries notNil ] ])
-		ifTrue: [
-				lastEntries do: [ :entry |
-						(entry key containsPoint: point) ifTrue: [
-								(best isNil or: [ entry key area < best key area ]) ifTrue: [
-									best := entry ] ] ] ].
+	(point notNil and: [ self visible and: [ lastEntries notNil ] ]) ifTrue: [
+		lastEntries do: [ :entry |
+			(entry key containsPoint: point) ifTrue: [
+				(best isNil or: [ entry key area < best key area ]) ifTrue: [ best := entry ] ] ] ].
 	best = hoveredEntry ifTrue: [ ^ self ].
 	hoveredEntry := best.
 	self changed

@@ -22,6 +22,11 @@ morph is deliberately NOT transparent to hit-testing: that is the whole point of
 	^ true
 ]
 
+{ #category : 'event handling' }
+DdInputShieldMorph >> handlesMouseWheel: anEvent [
+	^ true
+]
+
 { #category : 'geometry' }
 DdInputShieldMorph >> hasLiveTarget [
 
@@ -75,6 +80,28 @@ DdInputShieldMorph >> mouseDown: anEvent [
 		do: [ :error |  ]
 ]
 
+{ #category : 'event handling' }
+DdInputShieldMorph >> mouseWheel: anEvent [
+	"The shield lies over the preview, so the wheel reaches it rather than the scroll pane under
+	it: pass it on to the nearest scroll pane around the preview."
+	| current |
+	current := self targetMorph.
+	[ current notNil ] whileTrue: [
+		(current isKindOf: GeneralScrollPaneMorph) ifTrue: [ ^ current mouseWheel: anEvent ].
+		current := current owner ]
+]
+
+{ #category : 'geometry' }
+DdInputShieldMorph >> shieldRectangle [
+	"The visible part of the preview only: over the scroll bars or a scrolled-away part the shield
+	must not swallow clicks. nil when nothing of the preview is visible."
+	| bounds clip |
+	bounds := self targetMorph boundsInWorld.
+	clip := DdCanvasMap clipRectangleOf: self targetMorph.
+	clip ifNil: [ ^ bounds ].
+	^ bounds intersect: clip ifNone: [ nil ]
+]
+
 { #category : 'visibility' }
 DdInputShieldMorph >> showShield [
 
@@ -98,16 +125,15 @@ DdInputShieldMorph >> stepTime [
 
 { #category : 'private' }
 DdInputShieldMorph >> syncWithCanvas [
-
-	| topMorph |
+	| topMorph target |
 	self hasLiveTarget ifFalse: [ ^ self hideShield ].
 	topMorph := self topMorphOf: self targetMorph.
 	(self isFrontWindow: topMorph) ifFalse: [ ^ self hideShield ].
-	owner ifNil: [
-		topMorph world ifNotNil: [ :w | w addMorphFront: self ] ].
+	target := self shieldRectangle.
+	(target isNil or: [ target hasPositiveExtent not ]) ifTrue: [ ^ self hideShield ].
+	owner ifNil: [ topMorph world ifNotNil: [ :w | w addMorphFront: self ] ].
 	self showShield.
-	self bounds = self targetMorph boundsInWorld ifFalse: [
-		self bounds: self targetMorph boundsInWorld ].
+	self bounds = target ifFalse: [ self bounds: target ].
 	self keepAbove: topMorph
 ]
 
